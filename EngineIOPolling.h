@@ -1,9 +1,5 @@
 #pragma once
 
-struct Opts
-{
-    
-};
 
 class Polling : public Transport
 {
@@ -36,7 +32,7 @@ public:
      * @api private
      */
 
-    virtual bool write(const std::vector<Packet>& packets);
+    virtual bool write(const std::vector<Packet>& packets) override;
 
     virtual const char* getTransportName() const override;
     /**
@@ -44,7 +40,7 @@ public:
      *
      * @api private
      */
-    virtual void onData(const Data& data);
+    virtual void onData(const Data& data) override;
 
     /**
      * Opens the socket (triggers polling). We write a PING message to determine
@@ -52,13 +48,13 @@ public:
      *
      * @api private
      */
-    virtual bool doOpen();
+    virtual bool doOpen() override;
     /**
      * For polling, send a close packet.
      *
      * @api private
      */
-    virtual void doClose();
+    virtual void doClose() override;
 
     virtual void doPoll() = 0;
 

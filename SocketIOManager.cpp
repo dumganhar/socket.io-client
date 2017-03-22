@@ -231,7 +231,7 @@ SocketIOSocket* SocketIOManager::createSocket(const std::string& nsp, const Opts
     var self = this;
     socket.on('connecting', onConnecting);
     socket.on('connect', function () {
-      socket.id = self.engine.id;
+      socket.id = _engine.id;
     });
 
     if (_autoConnect) {
@@ -265,7 +265,7 @@ void SocketIOManager::destroySocket(SocketIOSocket* socket)
   disconnect();
 };
 
-void SocketIOManager::packet(const Packet& packet)
+void SocketIOManager::sendPacket(const Packet& packet)
 {
   debug('writing packet %j', packet);
   var self = this;
@@ -276,7 +276,7 @@ void SocketIOManager::packet(const Packet& packet)
     self.encoding = true;
     this.encoder.encode(packet, function (encodedPackets) {
       for (var i = 0; i < encodedPackets.length; i++) {
-        self.engine.write(encodedPackets[i], packet.options);
+        _engine.write(encodedPackets[i], packet.options);
       }
       self.encoding = false;
       self.processPacketQueue();

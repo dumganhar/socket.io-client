@@ -155,7 +155,7 @@ private:
      * @api private
      */
 
-    void packet(const Packet& packet);
+    void sendPacket(const Packet& packet);
 
     /**
      * If packet buffer is non-empty, begins encoding the

@@ -4,11 +4,6 @@
 
 namespace socketio { namespace transport {
 
-struct Opts
-{
-
-};
-
 class Transport : public Emitter
 {
 public:
