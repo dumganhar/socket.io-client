@@ -1,22 +1,3 @@
-
-/**
- * Module dependencies.
- */
-
-var parser = require('socket.io-parser');
-var Emitter = require('component-emitter');
-var toArray = require('to-array');
-var on = require('./on');
-var bind = require('component-bind');
-var debug = require('debug')('socket.io-client:socket');
-var hasBin = require('has-binary');
-
-/**
- * Module exports.
- */
-
-module.exports = exports = Socket;
-
 /**
  * Internal events (blacklisted).
  * These events can't be emitted by the user.
@@ -24,7 +5,7 @@ module.exports = exports = Socket;
  * @api private
  */
 
-var events = {
+enum class events = {
   connect: 1,
   connect_error: 1,
   connect_timeout: 1,
@@ -40,98 +21,57 @@ var events = {
   pong: 1
 };
 
-/**
- * Shortcut to `Emitter#emit`.
- */
 
-var emit = Emitter.prototype.emit;
-
-/**
- * `Socket` constructor.
- *
- * @api public
- */
-
-function Socket (io, nsp, opts) {
-  this.io = io;
-  this.nsp = nsp;
-  this.json = this; // compat
-  this.ids = 0;
-  this.acks = {};
-  this.receiveBuffer = [];
+SocketIOSocket::SocketIOSocket(SocketIOManager* io, const std::string& nsp, const Opts& opts)
+{
+  _io = io;
+  _nsp = nsp;
+  _ids = 0;
+  _acks.clear();
+  _receiveBuffer.clear();
   this.sendBuffer = [];
-  this.connected = false;
+  _connected = false;
   this.disconnected = true;
   if (opts && opts.query) {
     this.query = opts.query;
   }
-  if (this.io.autoConnect) this.open();
+  if (_io.autoConnect) this.open();
 }
 
-/**
- * Mix in `Emitter`.
- */
-
-Emitter(Socket.prototype);
-
-/**
- * Subscribe to open, close and packet events
- *
- * @api private
- */
-
-Socket.prototype.subEvents = function () {
+void SocketIOSocket::subEvents()
+{
   if (this.subs) return;
 
-  var io = this.io;
+  var io = _io;
   this.subs = [
     on(io, 'open', bind(this, 'onopen')),
     on(io, 'packet', bind(this, 'onpacket')),
     on(io, 'close', bind(this, 'onclose'))
   ];
-};
+}
 
-/**
- * "Opens" the socket.
- *
- * @api public
- */
+// connect
+void SocketIOSocket::open()
+{
+  if (_connected) return;
 
-Socket.prototype.open =
-Socket.prototype.connect = function () {
-  if (this.connected) return this;
-
-  this.subEvents();
-  this.io.open(); // ensure open
-  if ('open' === this.io.readyState) this.onopen();
+  subEvents();
+  _io.open(); // ensure open
+  if ('open' === _io.readyState) this.onopen();
   this.emit('connecting');
   return this;
-};
+}
 
-/**
- * Sends a `message` event.
- *
- * @return {Socket} self
- * @api public
- */
-
-Socket.prototype.send = function () {
+void SocketIOSocket::send()
+{
   var args = toArray(arguments);
   args.unshift('message');
   this.emit.apply(this, args);
   return this;
-};
+}
 
-/**
- * Override `emit`.
- * If the event is in `events`, it's emitted normally.
- *
- * @param {String} event name
- * @return {Socket} self
- * @api public
- */
-
-Socket.prototype.emit = function (ev) {
+void SocketIOSocket::emit(const std::string& eventName, const Args& args)
+{
   if (events.hasOwnProperty(ev)) {
     emit.apply(this, arguments);
     return this;
@@ -148,12 +88,12 @@ Socket.prototype.emit = function (ev) {
   // event ack callback
   if ('function' === typeof args[args.length - 1]) {
     debug('emitting packet with ack id %d', this.ids);
-    this.acks[this.ids] = args.pop();
+    _acks[this.ids] = args.pop();
     packet.id = this.ids++;
   }
 
-  if (this.connected) {
-    this.packet(packet);
+  if (_connected) {
+    sendPacket(packet);
   } else {
     this.sendBuffer.push(packet);
   }
@@ -161,27 +101,16 @@ Socket.prototype.emit = function (ev) {
   delete this.flags;
 
   return this;
-};
+}
 
-/**
- * Sends a packet.
- *
- * @param {Object} packet
- * @api private
- */
-
-Socket.prototype.packet = function (packet) {
+void SocketIOSocket::sendPacket(const Packet& packet)
+{
   packet.nsp = this.nsp;
-  this.io.packet(packet);
-};
+  _io->sendPacket(packet);
+}
 
-/**
- * Called upon engine `open`.
- *
- * @api private
- */
-
-Socket.prototype.onopen = function () {
+void SocketIOSocket::onopen()
+{
   debug('transport is open - connecting');
 
   // write connect packet if necessary
@@ -192,31 +121,19 @@ Socket.prototype.onopen = function () {
       this.packet({type: parser.CONNECT});
     }
   }
-};
+}
 
-/**
- * Called upon engine `close`.
- *
- * @param {String} reason
- * @api private
- */
-
-Socket.prototype.onclose = function (reason) {
+void SocketIOSocket::onclose(const std::string& reason)
+{
   debug('close (%s)', reason);
-  this.connected = false;
+  _connected = false;
   this.disconnected = true;
   delete this.id;
   this.emit('disconnect', reason);
-};
+}
 
-/**
- * Called with socket packet.
- *
- * @param {Object} packet
- * @api private
- */
-
-Socket.prototype.onpacket = function (packet) {
+void SocketIOSocket::onpacket(const Packet& packet)
+{
   if (packet.nsp !== this.nsp) return;
 
   switch (packet.type) {
@@ -248,16 +165,10 @@ Socket.prototype.onpacket = function (packet) {
       this.emit('error', packet.data);
       break;
   }
-};
+}
 
-/**
- * Called upon a server event.
- *
- * @param {Object} packet
- * @api private
- */
-
-Socket.prototype.onevent = function (packet) {
+void SocketIOSocket::onevent(const Packet& packet)
+{
   var args = packet.data || [];
   debug('emitting event %j', args);
 
@@ -266,20 +177,15 @@ Socket.prototype.onevent = function (packet) {
     args.push(this.ack(packet.id));
   }
 
-  if (this.connected) {
+  if (_connected) {
     emit.apply(this, args);
   } else {
-    this.receiveBuffer.push(args);
+    _receiveBuffer.push_back(args);
   }
-};
+}
 
-/**
- * Produces an ack callback to emit with an event.
- *
- * @api private
- */
-
-Socket.prototype.ack = function (id) {
+void SocketIOSocket::ack(int id)
+{
   var self = this;
   var sent = false;
   return function () {
@@ -296,79 +202,51 @@ Socket.prototype.ack = function (id) {
       data: args
     });
   };
-};
+}
 
-/**
- * Called upon a server acknowlegement.
- *
- * @param {Object} packet
- * @api private
- */
-
-Socket.prototype.onack = function (packet) {
-  var ack = this.acks[packet.id];
+void SocketIOSocket::onack(const Packet& packet)
+{
+  var ack = _acks[packet.id];
   if ('function' === typeof ack) {
     debug('calling ack %s with %j', packet.id, packet.data);
     ack.apply(this, packet.data);
-    delete this.acks[packet.id];
+    delete _acks[packet.id];
   } else {
     debug('bad ack %s', packet.id);
   }
-};
+}
 
-/**
- * Called upon server connect.
- *
- * @api private
- */
-
-Socket.prototype.onconnect = function () {
-  this.connected = true;
+void SocketIOSocket::onconnect()
+{
+  _connected = true;
   this.disconnected = false;
   this.emit('connect');
   this.emitBuffered();
-};
+}
 
-/**
- * Emit buffered events (received and emitted).
- *
- * @api private
- */
-
-Socket.prototype.emitBuffered = function () {
-  var i;
-  for (i = 0; i < this.receiveBuffer.length; i++) {
-    emit.apply(this, this.receiveBuffer[i]);
+void SocketIOSocket::emitBuffered()
+{
+  size_t i;
+  for (i = 0; i < _receiveBuffer.size(); i++) {
+    emit.apply(this, _receiveBuffer[i]);
   }
-  this.receiveBuffer = [];
+  _receiveBuffer.clear();
 
   for (i = 0; i < this.sendBuffer.length; i++) {
     this.packet(this.sendBuffer[i]);
   }
   this.sendBuffer = [];
-};
+}
 
-/**
- * Called upon server disconnect.
- *
- * @api private
- */
-
-Socket.prototype.ondisconnect = function () {
+void SocketIOSocket::ondisconnect()
+{
   debug('server disconnect (%s)', this.nsp);
   this.destroy();
   this.onclose('io server disconnect');
-};
+}
 
-/**
- * Called upon forced client/server side disconnections,
- * this method ensures the manager stops tracking us and
- * that reconnections don't get triggered for this.
- *
- * @api private.
- */
-
-Socket.prototype.destroy = function () {
+void SocketIOSocket::destroy()
+{
   if (this.subs) {
     // clean subscriptions to avoid reconnections
     for (var i = 0; i < this.subs.length; i++) {
@@ -377,19 +255,13 @@ Socket.prototype.destroy = function () {
     this.subs = null;
   }
 
-  this.io.destroy(this);
-};
+  _io.destroy(this);
+}
 
-/**
- * Disconnects the socket manually.
- *
- * @return {Socket} self
- * @api public
- */
-
-Socket.prototype.close =
-Socket.prototype.disconnect = function () {
-  if (this.connected) {
+// disconnect
+void SocketIOSocket::close()
+{
+  if (_connected) {
     debug('performing disconnect (%s)', this.nsp);
     this.packet({ type: parser.DISCONNECT });
   }
@@ -397,23 +269,15 @@ Socket.prototype.disconnect = function () {
   // remove socket from pool
   this.destroy();
 
-  if (this.connected) {
+  if (_connected) {
     // fire events
     this.onclose('io client disconnect');
   }
   return this;
-};
+}
 
-/**
- * Sets the compress flag.
- *
- * @param {Boolean} if `true`, compresses the sending data
- * @return {Socket} self
- * @api public
- */
-
-Socket.prototype.compress = function (compress) {
+void SocketIOSocket::compress(bool isCompress)
+{
   this.flags = this.flags || {};
-  this.flags.compress = compress;
-  return this;
-};
+  this.flags.compress = isCompress;
+}

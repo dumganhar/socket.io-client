@@ -1,15 +1,6 @@
-/**
- * Module dependencies.
- */
+#include "EngineIOTransport.h"
 
-var parser = require('engine.io-parser');
-var Emitter = require('component-emitter');
-
-/**
- * Module exports.
- */
-
-module.exports = Transport;
+namespace socketio { namespace transport {
 
 /**
  * Transport abstract constructor.
@@ -18,39 +9,34 @@ module.exports = Transport;
  * @api private
  */
 
-function Transport (opts) {
-  this.path = opts.path;
-  this.hostname = opts.hostname;
-  this.port = opts.port;
-  this.secure = opts.secure;
-  this.query = opts.query;
-  this.timestampParam = opts.timestampParam;
-  this.timestampRequests = opts.timestampRequests;
-  this.readyState = '';
-  this.agent = opts.agent || false;
-  this.socket = opts.socket;
-  this.enablesXDR = opts.enablesXDR;
+bool Transport::init (const Opts& opts)
+{
+  _path = opts.path;
+  _hostname = opts.hostname;
+  _port = opts.port;
+  _secure = opts.secure;
+  _query = opts.query;
+  _timestampParam = opts.timestampParam;
+  _timestampRequests = opts.timestampRequests;
+  _readyState = ReadyState::NONE;
+  _agent = opts.agent || false;
+  _socket = opts.socket;
+  _enablesXDR = opts.enablesXDR;
 
   // SSL options for Node.js client
-  this.pfx = opts.pfx;
-  this.key = opts.key;
-  this.passphrase = opts.passphrase;
-  this.cert = opts.cert;
-  this.ca = opts.ca;
-  this.ciphers = opts.ciphers;
-  this.rejectUnauthorized = opts.rejectUnauthorized;
-  this.forceNode = opts.forceNode;
+  _pfx = opts.pfx;
+  _key = opts.key;
+  _passphrase = opts.passphrase;
+  _cert = opts.cert;
+  _ca = opts.ca;
+  _ciphers = opts.ciphers;
+  _rejectUnauthorized = opts.rejectUnauthorized;
+  _forceNode = opts.forceNode;
 
   // other options for Node.js client
-  this.extraHeaders = opts.extraHeaders;
-  this.localAddress = opts.localAddress;
+  _extraHeaders = opts.extraHeaders;
+  _localAddress = opts.localAddress;
 }
-
-/**
- * Mix in `Emitter`.
- */
-
-Emitter(Transport.prototype);
 
 /**
  * Emits an error.
@@ -60,13 +46,13 @@ Emitter(Transport.prototype);
  * @api public
  */
 
-Transport.prototype.onError = function (msg, desc) {
+void Transport::onError(const std::string& msg, const std::string& desc)
+{
   var err = new Error(msg);
   err.type = 'TransportError';
   err.description = desc;
-  this.emit('error', err);
-  return this;
-};
+  emit('error', err);
+}
 
 /**
  * Opens the transport.
@@ -74,14 +60,15 @@ Transport.prototype.onError = function (msg, desc) {
  * @api public
  */
 
-Transport.prototype.open = function () {
-  if ('closed' === this.readyState || '' === this.readyState) {
-    this.readyState = 'opening';
-    this.doOpen();
+bool Transport::open()
+{
+  if (ReadyState::CLOSED == _readyState || ReadyState::NONE == _readyState) {
+    _readyState = ReadyState::OPENING;
+    return doOpen();
   }
 
-  return this;
-};
+  return false;
+}
 
 /**
  * Closes the transport.
@@ -89,14 +76,13 @@ Transport.prototype.open = function () {
  * @api private
  */
 
-Transport.prototype.close = function () {
-  if ('opening' === this.readyState || 'open' === this.readyState) {
-    this.doClose();
-    this.onClose();
+void Transport::close()
+{
+  if (ReadyState::OPENING == _readyState || ReadyState::OPEN == _readyState) {
+    doClose();
+    onClose();
   }
-
-  return this;
-};
+}
 
 /**
  * Sends multiple packets.
@@ -105,13 +91,14 @@ Transport.prototype.close = function () {
  * @api private
  */
 
-Transport.prototype.send = function (packets) {
-  if ('open' === this.readyState) {
-    this.write(packets);
+bool Transport::send(const Packet& packets)
+{
+  if (ReadyState::OPEN == _readyState) {
+    write(packets);
   } else {
     throw new Error('Transport not open');
   }
-};
+}
 
 /**
  * Called upon open
@@ -119,11 +106,12 @@ Transport.prototype.send = function (packets) {
  * @api private
  */
 
-Transport.prototype.onOpen = function () {
-  this.readyState = 'open';
-  this.writable = true;
-  this.emit('open');
-};
+void Transport::onOpen()
+{
+  _readyState = ReadyState::OPEN;
+  _writable = true;
+  emit('open');
+}
 
 /**
  * Called with data.
@@ -132,18 +120,20 @@ Transport.prototype.onOpen = function () {
  * @api private
  */
 
-Transport.prototype.onData = function (data) {
-  var packet = parser.decodePacket(data, this.socket.binaryType);
-  this.onPacket(packet);
-};
+void Transport::onData(const Data& data)
+{
+  Packet packet = parser::decodePacket(data, _socket.binaryType);
+  onPacket(packet);
+}
 
 /**
  * Called with a decoded packet.
  */
 
-Transport.prototype.onPacket = function (packet) {
-  this.emit('packet', packet);
-};
+void Transport::onPacket(const Packet& packet)
+{
+  emit('packet', packet);
+}
 
 /**
  * Called upon close.
@@ -151,7 +141,10 @@ Transport.prototype.onPacket = function (packet) {
  * @api private
  */
 
-Transport.prototype.onClose = function () {
-  this.readyState = 'closed';
-  this.emit('close');
-};
+void Transport::onClose()
+{
+  _readyState = ReadyState::CLOSED;
+  emit('close');
+}
+
+}} // namespace socketio { namespace transport {

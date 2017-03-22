@@ -1,56 +1,15 @@
-/**
- * Module dependencies.
- */
 
-var Transport = require('../transport');
-var parseqs = require('parseqs');
-var parser = require('engine.io-parser');
-var inherit = require('component-inherit');
-var yeast = require('yeast');
-var debug = require('debug')('engine.io-client:polling');
 
-/**
- * Module exports.
- */
+Polling::Polling(const Opts& opts)
+: Transport(opts)
+{
 
-module.exports = Polling;
-
-/**
- * Is XHR2 supported?
- */
-
-var hasXHR2 = (function () {
-  var XMLHttpRequest = require('xmlhttprequest-ssl');
-  var xhr = new XMLHttpRequest({ xdomain: false });
-  return null != xhr.responseType;
-})();
-
-/**
- * Polling interface.
- *
- * @param {Object} opts
- * @api private
- */
-
-function Polling (opts) {
-  var forceBase64 = (opts && opts.forceBase64);
-  if (!hasXHR2 || forceBase64) {
-    this.supportsBinary = false;
-  }
-  Transport.call(this, opts);
 }
 
-/**
- * Inherits from Transport.
- */
-
-inherit(Polling, Transport);
-
-/**
- * Transport name.
- */
-
-Polling.prototype.name = 'polling';
+const char* Polling::getTransportName() const
+{
+  return "polling"
+}
 
 /**
  * Opens the socket (triggers polling). We write a PING message to determine
@@ -59,18 +18,13 @@ Polling.prototype.name = 'polling';
  * @api private
  */
 
-Polling.prototype.doOpen = function () {
-  this.poll();
-};
+bool Polling::doOpen()
+{
+  poll();
+}
 
-/**
- * Pauses polling.
- *
- * @param {Function} callback upon buffers are flushed and transport is paused
- * @api private
- */
-
-Polling.prototype.pause = function (onPause) {
+void Polling::pause()
+{
   var self = this;
 
   this.readyState = 'pausing';
@@ -81,10 +35,10 @@ Polling.prototype.pause = function (onPause) {
     onPause();
   }
 
-  if (this.polling || !this.writable) {
+  if (_polling || !this.writable) {
     var total = 0;
 
-    if (this.polling) {
+    if (_polling) {
       debug('we are currently polling - waiting to pause');
       total++;
       this.once('pollComplete', function () {
@@ -106,26 +60,16 @@ Polling.prototype.pause = function (onPause) {
   }
 };
 
-/**
- * Starts polling cycle.
- *
- * @api public
- */
-
-Polling.prototype.poll = function () {
+void Polling::poll()
+{
   debug('polling');
-  this.polling = true;
+  _polling = true;
   this.doPoll();
   this.emit('poll');
 };
 
-/**
- * Overloads onData to detect payloads.
- *
- * @api private
- */
-
-Polling.prototype.onData = function (data) {
+void Polling::onData(const Data& data)
+{
   var self = this;
   debug('polling got data %s', data);
   var callback = function (packet, index, total) {
@@ -145,29 +89,24 @@ Polling.prototype.onData = function (data) {
   };
 
   // decode payload
-  parser.decodePayload(data, this.socket.binaryType, callback);
+  parser::decodePayload(data, this.socket.binaryType, callback);
 
   // if an event did not trigger closing
   if ('closed' !== this.readyState) {
     // if we got data we're not polling
-    this.polling = false;
+    _polling = false;
     this.emit('pollComplete');
 
     if ('open' === this.readyState) {
-      this.poll();
+      poll();
     } else {
       debug('ignoring poll - transport state "%s"', this.readyState);
     }
   }
 };
 
-/**
- * For polling, send a close packet.
- *
- * @api private
- */
-
-Polling.prototype.doClose = function () {
+void Polling::doClose()
+{
   var self = this;
 
   function close () {
@@ -186,15 +125,8 @@ Polling.prototype.doClose = function () {
   }
 };
 
-/**
- * Writes a packets payload.
- *
- * @param {Array} data packets
- * @param {Function} drain callback
- * @api private
- */
-
-Polling.prototype.write = function (packets) {
+bool Polling::write(const std::vector<Packet>& packets)
+{
   var self = this;
   this.writable = false;
   var callbackfn = function () {

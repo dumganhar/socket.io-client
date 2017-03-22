@@ -1,67 +1,47 @@
-/**
- * Module dependencies.
- */
+#include "EngineIOParser.h"
 
-var utf8 = require('wtf-8');
-var after = require('after');
-var keys = require('./keys');
+namespace socketio { namespace parser {
 
-/**
- * Current protocol version.
- */
-exports.protocol = 3;
 
+uint8_t protocol = 3;
+
+std::unordered_map<std::string, uint8_t> packets = {
+  { "open": 0 },    // non-ws
+  { "close": 1 },   // non-ws
+  { "ping": 2 },
+  { "pong": 3 },
+  { "message": 4 },
+  { "upgrade": 5 },
+  { "noop": 6 }
+};
 /**
  * Packet types.
  */
 
-var packets = exports.packets = {
-    open:     0    // non-ws
-  , close:    1    // non-ws
-  , ping:     2
-  , pong:     3
-  , message:  4
-  , upgrade:  5
-  , noop:     6
+const char* packetslist = {
+  "open",
+  "close"
+  "ping",
+  "pong",
+  "message"
+  "upgrade",
+  "noop"
 };
-
-var packetslist = keys(packets);
 
 /**
  * Premade error packet.
  */
 
-var err = { type: 'error', data: 'parser error' };
+struct {
+  const char* type;
+  const char* data;
+} err = {"error", "parser error"};
 
-/**
- * Encodes a packet.
- *
- *     <packet type id> [ <data> ]
- *
- * Example:
- *
- *     5hello world
- *     3
- *     4
- *
- * Binary is encoded in an identical principle
- *
- * @api private
- */
 
-exports.encodePacket = function (packet, supportsBinary, utf8encode, callback) {
-  if ('function' == typeof supportsBinary) {
-    callback = supportsBinary;
-    supportsBinary = null;
-  }
-
-  if ('function' == typeof utf8encode ) {
-    callback = utf8encode;
-    utf8encode = null;
-  }
-
+std::string encodePacket(const Packet& packet, bool supportsBinary, bool utf8encode)
+{
   if (Buffer.isBuffer(packet.data)) {
-    return encodeBuffer(packet, supportsBinary, callback);
+    return encodeBuffer(packet, supportsBinary);
   } else if (packet.data && (packet.data.buffer || packet.data) instanceof ArrayBuffer) {
     packet.data = arrayBufferToBuffer(packet.data);
     return encodeBuffer(packet, supportsBinary, callback);
@@ -82,7 +62,8 @@ exports.encodePacket = function (packet, supportsBinary, utf8encode, callback) {
  * Encode Buffer data
  */
 
-function encodeBuffer(packet, supportsBinary, callback) {
+std::string encodeBuffer(const Packet& packet, bool supportsBinary)
+{
   var data = packet.data;
   if (!supportsBinary) {
     return exports.encodeBase64Packet(packet, callback);
@@ -110,15 +91,9 @@ exports.encodeBase64Packet = function(packet, callback){
   return callback(message);
 };
 
-/**
- * Decodes a packet. Data also available as an ArrayBuffer if requested.
- *
- * @return {Object} with `type` and `data` (if any)
- * @api private
- */
-
-exports.decodePacket = function (data, binaryType, utf8decode) {
-  if (data === undefined) {
+Packet decodePacket(const Data& data, bool binaryType, bool utf8decode)
+{
+  if (data == undefined) {
     return err;
   }
   // String data
@@ -472,3 +447,6 @@ exports.decodePayloadAsBinary = function (data, binaryType, callback) {
     callback(exports.decodePacket(buffer, binaryType, true), i, total);
   });
 };
+
+}} //namespace socketio { namespace parser {
+

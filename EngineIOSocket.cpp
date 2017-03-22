@@ -1,32 +1,7 @@
-/**
- * Module dependencies.
- */
 
-var transports = require('./transports/index');
-var Emitter = require('component-emitter');
-var debug = require('debug')('engine.io-client:socket');
-var index = require('indexof');
-var parser = require('engine.io-parser');
-var parseuri = require('parseuri');
-var parsejson = require('parsejson');
-var parseqs = require('parseqs');
-
-/**
- * Module exports.
- */
-
-module.exports = Socket;
-
-/**
- * Socket constructor.
- *
- * @param {String|Object} uri or options
- * @param {Object} options
- * @api public
- */
-
-function Socket (uri, opts) {
-  if (!(this instanceof Socket)) return new Socket(uri, opts);
+EngineIOSocket::EngineIOSocket(const std::string& uri, const Opts& opts)
+{
+  if (!(this instanceof EngineIOSocket)) return new EngineIOSocket(uri, opts);
 
   opts = opts || {};
 
@@ -121,29 +96,10 @@ function Socket (uri, opts) {
 
 Socket.priorWebsocketSuccess = false;
 
-/**
- * Mix in `Emitter`.
- */
-
-Emitter(Socket.prototype);
-
-/**
- * Protocol version.
- *
- * @api public
- */
-
-Socket.protocol = parser.protocol; // this is an int
-
-/**
- * Expose deps for legacy compatibility
- * and standalone browser access.
- */
-
-Socket.Socket = Socket;
-Socket.Transport = require('./transport');
-Socket.transports = require('./transports/index');
-Socket.parser = require('engine.io-parser');
+int EngineIOSocket::getProtocolVersion() const
+{
+    return parser::getProtocolVersion();
+}
 
 /**
  * Creates transport of the given type.
@@ -153,7 +109,8 @@ Socket.parser = require('engine.io-parser');
  * @api private
  */
 
-Socket.prototype.createTransport = function (name) {
+Transport* EngineIOSocket::createTransport(const std::string& name)
+{
   debug('creating transport "%s"', name);
   var query = clone(this.query);
 
@@ -207,12 +164,8 @@ function clone (obj) {
   return o;
 }
 
-/**
- * Initializes transport to use and starts probe.
- *
- * @api private
- */
-Socket.prototype.open = function () {
+void EngineIOSocket::open()
+{
   var transport;
   if (this.rememberUpgrade && Socket.priorWebsocketSuccess && this.transports.indexOf('websocket') !== -1) {
     transport = 'websocket';
@@ -241,19 +194,14 @@ Socket.prototype.open = function () {
   this.setTransport(transport);
 };
 
-/**
- * Sets the current transport. Disables the existing one (if any).
- *
- * @api private
- */
-
-Socket.prototype.setTransport = function (transport) {
+void EngineIOSocket::setTransport(Transport* transport)
+{
   debug('setting transport %s', transport.name);
   var self = this;
 
   if (this.transport) {
     debug('clearing existing transport %s', this.transport.name);
-    this.transport.removeAllListeners();
+    this.transport.offAll();
   }
 
   // set up transport
@@ -275,14 +223,8 @@ Socket.prototype.setTransport = function (transport) {
   });
 };
 
-/**
- * Probes a transport.
- *
- * @param {String} transport name
- * @api private
- */
-
-Socket.prototype.probe = function (name) {
+void EngineIOSocket::probe(const std::string& name)
+{
   debug('probing transport "%s"', name);
   var transport = this.createTransport(name, { probe: 1 });
   var failed = false;
@@ -375,11 +317,11 @@ Socket.prototype.probe = function (name) {
 
   // Remove all listeners on the transport and on self
   function cleanup () {
-    transport.removeListener('open', onTransportOpen);
-    transport.removeListener('error', onerror);
-    transport.removeListener('close', onTransportClose);
-    self.removeListener('close', onclose);
-    self.removeListener('upgrading', onupgrade);
+    transport.off('open', onTransportOpen);
+    transport.off('error', onerror);
+    transport.off('close', onTransportClose);
+    self.off('close', onclose);
+    self.off('upgrading', onupgrade);
   }
 
   transport.once('open', onTransportOpen);
@@ -392,13 +334,8 @@ Socket.prototype.probe = function (name) {
   transport.open();
 };
 
-/**
- * Called when connection is deemed open.
- *
- * @api public
- */
-
-Socket.prototype.onOpen = function () {
+void EngineIOSocket::onOpen()
+{
   debug('socket open');
   this.readyState = 'open';
   Socket.priorWebsocketSuccess = 'websocket' === this.transport.name;
@@ -415,13 +352,8 @@ Socket.prototype.onOpen = function () {
   }
 };
 
-/**
- * Handles a packet.
- *
- * @api private
- */
-
-Socket.prototype.onPacket = function (packet) {
+void EngineIOSocket::onPacket(const Packet& packet)
+{
   if ('opening' === this.readyState || 'open' === this.readyState ||
       'closing' === this.readyState) {
     debug('socket receive: type "%s", data "%s"', packet.type, packet.data);
@@ -457,14 +389,8 @@ Socket.prototype.onPacket = function (packet) {
   }
 };
 
-/**
- * Called upon handshake completion.
- *
- * @param {Object} handshake obj
- * @api private
- */
-
-Socket.prototype.onHandshake = function (data) {
+void EngineIOSocket::onHandshake(const Data& data)
+{
   this.emit('handshake', data);
   this.id = data.sid;
   this.transport.query.sid = data.sid;
@@ -477,17 +403,12 @@ Socket.prototype.onHandshake = function (data) {
   this.setPing();
 
   // Prolong liveness of socket on heartbeat
-  this.removeListener('heartbeat', this.onHeartbeat);
+  this.off('heartbeat', this.onHeartbeat);
   this.on('heartbeat', this.onHeartbeat);
 };
 
-/**
- * Resets ping timeout.
- *
- * @api private
- */
-
-Socket.prototype.onHeartbeat = function (timeout) {
+void EngineIOSocket::onHeartbeat(float timeout)
+{
   clearTimeout(this.pingTimeoutTimer);
   var self = this;
   self.pingTimeoutTimer = setTimeout(function () {
@@ -496,14 +417,8 @@ Socket.prototype.onHeartbeat = function (timeout) {
   }, timeout || (self.pingInterval + self.pingTimeout));
 };
 
-/**
- * Pings server every `this.pingInterval` and expects response
- * within `this.pingTimeout` or closes connection.
- *
- * @api private
- */
-
-Socket.prototype.setPing = function () {
+void EngineIOSocket::setPing()
+{
   var self = this;
   clearTimeout(self.pingIntervalTimer);
   self.pingIntervalTimer = setTimeout(function () {
@@ -513,26 +428,16 @@ Socket.prototype.setPing = function () {
   }, self.pingInterval);
 };
 
-/**
-* Sends a ping packet.
-*
-* @api private
-*/
-
-Socket.prototype.ping = function () {
+void EngineIOSocket::ping()
+{
   var self = this;
   this.sendPacket('ping', function () {
     self.emit('ping');
   });
 };
 
-/**
- * Called on `drain` event
- *
- * @api private
- */
-
-Socket.prototype.onDrain = function () {
+EngineIOSocket::onDrain()
+{
   this.writeBuffer.splice(0, this.prevBufferLen);
 
   // setting prevBufferLen = 0 is very important
@@ -547,13 +452,8 @@ Socket.prototype.onDrain = function () {
   }
 };
 
-/**
- * Flush write buffers.
- *
- * @api private
- */
-
-Socket.prototype.flush = function () {
+void EngineIOSocket::flush()
+{
   if ('closed' !== this.readyState && this.transport.writable &&
     !this.upgrading && this.writeBuffer.length) {
     debug('flushing %d packets in socket', this.writeBuffer.length);
@@ -565,33 +465,14 @@ Socket.prototype.flush = function () {
   }
 };
 
-/**
- * Sends a message.
- *
- * @param {String} message.
- * @param {Function} callback function.
- * @param {Object} options.
- * @return {Socket} for chaining.
- * @api public
- */
-
-Socket.prototype.write =
-Socket.prototype.send = function (msg, options, fn) {
+void EngineIOSocket::send(const std::string& msg, const Opts& options, const std::function<void()>& fn)
+{
   this.sendPacket('message', msg, options, fn);
   return this;
-};
+}
 
-/**
- * Sends a packet.
- *
- * @param {String} packet type.
- * @param {String} data.
- * @param {Object} options.
- * @param {Function} callback function.
- * @api private
- */
-
-Socket.prototype.sendPacket = function (type, data, options, fn) {
+void EngineIOSocket::sendPacket(const std::string& type, const std::string& data, const Opts& options, const std::function<void()>& fn)
+{
   if ('function' === typeof data) {
     fn = data;
     data = undefined;
@@ -626,7 +507,8 @@ Socket.prototype.sendPacket = function (type, data, options, fn) {
  * @api private
  */
 
-Socket.prototype.close = function () {
+void EngineIOSocket::close()
+{
   if ('opening' === this.readyState || 'open' === this.readyState) {
     this.readyState = 'closing';
 
@@ -654,8 +536,8 @@ Socket.prototype.close = function () {
   }
 
   function cleanupAndClose () {
-    self.removeListener('upgrade', cleanupAndClose);
-    self.removeListener('upgradeError', cleanupAndClose);
+    self.off('upgrade', cleanupAndClose);
+    self.off('upgradeError', cleanupAndClose);
     close();
   }
 
@@ -674,7 +556,8 @@ Socket.prototype.close = function () {
  * @api private
  */
 
-Socket.prototype.onError = function (err) {
+void EngineIOSocket::onError(const std::string& err)
+{
   debug('socket error %j', err);
   Socket.priorWebsocketSuccess = false;
   this.emit('error', err);
@@ -687,7 +570,8 @@ Socket.prototype.onError = function (err) {
  * @api private
  */
 
-Socket.prototype.onClose = function (reason, desc) {
+void EngineIOSocket::onClose(const std::string& reason, const std::string& desc)
+{
   if ('opening' === this.readyState || 'open' === this.readyState || 'closing' === this.readyState) {
     debug('socket close with reason: "%s"', reason);
     var self = this;
@@ -697,13 +581,13 @@ Socket.prototype.onClose = function (reason, desc) {
     clearTimeout(this.pingTimeoutTimer);
 
     // stop event from firing again for transport
-    this.transport.removeAllListeners('close');
+    this.transport.off('close');
 
     // ensure transport won't stay open
     this.transport.close();
 
     // ignore further transport communication
-    this.transport.removeAllListeners();
+    this.transport.offAll();
 
     // set ready state
     this.readyState = 'closed';
@@ -729,7 +613,8 @@ Socket.prototype.onClose = function (reason, desc) {
  *
  */
 
-Socket.prototype.filterUpgrades = function (upgrades) {
+void EngineIOSocket::filterUpgrades(const std::vector<std::string>& upgrades)
+{
   var filteredUpgrades = [];
   for (var i = 0, j = upgrades.length; i < j; i++) {
     if (~index(this.transports, upgrades[i])) filteredUpgrades.push(upgrades[i]);

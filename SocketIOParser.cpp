@@ -1,13 +1,6 @@
+#include "SocketIOParser.h"
 
-/**
- * Module dependencies.
- */
-
-var debug = require('debug')('socket.io-parser');
-var json = require('json3');
-var Emitter = require('component-emitter');
-var binary = require('./binary');
-var isBuf = require('./is-buffer');
+namespace socketio { namespace parser {
 
 /**
  * Protocol version.
@@ -15,7 +8,7 @@ var isBuf = require('./is-buffer');
  * @api public
  */
 
-exports.protocol = 4;
+uint8_t protocol = 4;
 
 /**
  * Packet types.
@@ -23,95 +16,15 @@ exports.protocol = 4;
  * @api public
  */
 
-exports.types = [
-  'CONNECT',
-  'DISCONNECT',
-  'EVENT',
-  'ACK',
-  'ERROR',
-  'BINARY_EVENT',
-  'BINARY_ACK'
-];
-
-/**
- * Packet type `connect`.
- *
- * @api public
- */
-
-exports.CONNECT = 0;
-
-/**
- * Packet type `disconnect`.
- *
- * @api public
- */
-
-exports.DISCONNECT = 1;
-
-/**
- * Packet type `event`.
- *
- * @api public
- */
-
-exports.EVENT = 2;
-
-/**
- * Packet type `ack`.
- *
- * @api public
- */
-
-exports.ACK = 3;
-
-/**
- * Packet type `error`.
- *
- * @api public
- */
-
-exports.ERROR = 4;
-
-/**
- * Packet type 'binary event'
- *
- * @api public
- */
-
-exports.BINARY_EVENT = 5;
-
-/**
- * Packet type `binary ack`. For acks with binary arguments.
- *
- * @api public
- */
-
-exports.BINARY_ACK = 6;
-
-/**
- * Encoder constructor.
- *
- * @api public
- */
-
-exports.Encoder = Encoder;
-
-/**
- * Decoder constructor.
- *
- * @api public
- */
-
-exports.Decoder = Decoder;
-
-/**
- * A socket.io Encoder instance
- *
- * @api public
- */
-
-function Encoder() {}
+const char* types = {
+  "CONNECT",
+  "DISCONNECT",
+  "EVENT",
+  "ACK",
+  "ERROR",
+  "BINARY_EVENT",
+  "BINARY_ACK"
+};
 
 /**
  * Encode a packet as a single string if non-binary, or as a
@@ -402,3 +315,5 @@ function error(data){
     data: 'parser error'
   };
 }
+
+}} // namespace socketio { namespace parser {

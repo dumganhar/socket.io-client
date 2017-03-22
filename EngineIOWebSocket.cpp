@@ -1,46 +1,5 @@
-/**
- * Module dependencies.
- */
-
-var Transport = require('../transport');
-var parser = require('engine.io-parser');
-var parseqs = require('parseqs');
-var inherit = require('component-inherit');
-var yeast = require('yeast');
-var debug = require('debug')('engine.io-client:websocket');
-var BrowserWebSocket = global.WebSocket || global.MozWebSocket;
-var NodeWebSocket;
-if (typeof window === 'undefined') {
-  try {
-    NodeWebSocket = require('ws');
-  } catch (e) { }
-}
-
-/**
- * Get either the `WebSocket` or `MozWebSocket` globals
- * in the browser or try to resolve WebSocket-compatible
- * interface exposed by `ws` for Node-like environment.
- */
-
-var WebSocket = BrowserWebSocket;
-if (!WebSocket && typeof window === 'undefined') {
-  WebSocket = NodeWebSocket;
-}
-
-/**
- * Module exports.
- */
-
-module.exports = WS;
-
-/**
- * WebSocket transport constructor.
- *
- * @api {Object} connection options
- * @api public
- */
-
-function WS (opts) {
+WS::WS(const Opts& opts)
+{
   var forceBase64 = (opts && opts.forceBase64);
   if (forceBase64) {
     this.supportsBinary = false;
@@ -53,11 +12,10 @@ function WS (opts) {
   Transport.call(this, opts);
 }
 
-/**
- * Inherits from Transport.
- */
-
-inherit(WS, Transport);
+WS::~WS()
+{
+  
+}
 
 /**
  * Transport name.
@@ -65,13 +23,10 @@ inherit(WS, Transport);
  * @api public
  */
 
-WS.prototype.name = 'websocket';
-
-/*
- * WebSockets support binary
- */
-
-WS.prototype.supportsBinary = true;
+const char* WS::getTransportName() const
+{
+  return "websocket";
+}
 
 /**
  * Opens socket.
@@ -79,7 +34,8 @@ WS.prototype.supportsBinary = true;
  * @api private
  */
 
-WS.prototype.doOpen = function () {
+void WS::doOpen()
+{
   if (!this.check()) {
     // let probe timeout
     return;
@@ -127,13 +83,8 @@ WS.prototype.doOpen = function () {
   this.addEventListeners();
 };
 
-/**
- * Adds event listeners to the socket
- *
- * @api private
- */
-
-WS.prototype.addEventListeners = function () {
+void WS::addEventListeners()
+{
   var self = this;
 
   this.ws.onopen = function () {
@@ -150,14 +101,8 @@ WS.prototype.addEventListeners = function () {
   };
 };
 
-/**
- * Writes data to socket.
- *
- * @param {Array} array of packets.
- * @api private
- */
-
-WS.prototype.write = function (packets) {
+bool WS::write(const std::vector<Packet>& packets)
+{
   var self = this;
   this.writable = false;
 
@@ -219,9 +164,10 @@ WS.prototype.write = function (packets) {
  * @api private
  */
 
-WS.prototype.onClose = function () {
-  Transport.prototype.onClose.call(this);
-};
+void WS::onClose()
+{
+  Transport::onClose();
+}
 
 /**
  * Closes socket.
@@ -229,11 +175,12 @@ WS.prototype.onClose = function () {
  * @api private
  */
 
-WS.prototype.doClose = function () {
+void WS::doClose()
+{
   if (typeof this.ws !== 'undefined') {
     this.ws.close();
   }
-};
+}
 
 /**
  * Generates uri for connection.
