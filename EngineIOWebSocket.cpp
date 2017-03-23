@@ -2,7 +2,7 @@ WS::WS(const Opts& opts)
 {
   var forceBase64 = (opts && opts.forceBase64);
   if (forceBase64) {
-    this.supportsBinary = false;
+    _supportsBinary = false;
   }
   this.perMessageDeflate = opts.perMessageDeflate;
   this.usingBrowserWebSocket = BrowserWebSocket && !opts.forceNode;
@@ -23,7 +23,7 @@ WS::~WS()
  * @api public
  */
 
-const char* WS::getTransportName() const
+const char* WS::getName() const
 {
   return "websocket";
 }
@@ -63,55 +63,45 @@ void WS::doOpen()
     opts.localAddress = this.localAddress;
   }
 
-  try {
-    this.ws = this.usingBrowserWebSocket ? new WebSocket(uri) : new WebSocket(uri, protocols, opts);
-  } catch (err) {
+  _ws = new WebSocket(uri, protocols, opts);
+
+  if (_ws == nullptr) {
     return this.emit('error', err);
   }
 
-  if (this.ws.binaryType === undefined) {
-    this.supportsBinary = false;
-  }
+  _supportsBinary = true;
 
-  if (this.ws.supports && this.ws.supports.binary) {
-    this.supportsBinary = true;
-    this.ws.binaryType = 'nodebuffer';
-  } else {
-    this.ws.binaryType = 'arraybuffer';
-  }
-
-  this.addEventListeners();
-};
+  addEventListeners();
+}
 
 void WS::addEventListeners()
 {
   var self = this;
 
-  this.ws.onopen = function () {
+  _ws->onopen = function () {
     self.onOpen();
   };
-  this.ws.onclose = function () {
+  _ws->onclose = function () {
     self.onClose();
   };
-  this.ws.onmessage = function (ev) {
+  _ws->onmessage = function (ev) {
     self.onData(ev.data);
   };
-  this.ws.onerror = function (e) {
+  _ws->onerror = function (e) {
     self.onError('websocket error', e);
   };
-};
+}
 
 bool WS::write(const std::vector<Packet>& packets)
 {
-  var self = this;
-  this.writable = false;
+  _writable = false;
 
   // encodePacket efficient as it uses WS framing
   // no need for encodePayload
   var total = packets.length;
   for (var i = 0, l = total; i < l; i++) {
     (function (packet) {
-      parser.encodePacket(packet, self.supportsBinary, function (data) {
+      parser.encodePacket(packet, _supportsBinary, function (data) {
         if (!self.usingBrowserWebSocket) {
           // always create a new object (GH-437)
           var opts = {};
@@ -120,7 +110,7 @@ bool WS::write(const std::vector<Packet>& packets)
           }
 
           if (self.perMessageDeflate) {
-            var len = 'string' === typeof data ? global.Buffer.byteLength(data) : data.length;
+            var len = 'string' == typeof data ? global.Buffer.byteLength(data) : data.length;
             if (len < self.perMessageDeflate.threshold) {
               opts.compress = false;
             }
@@ -147,39 +137,25 @@ bool WS::write(const std::vector<Packet>& packets)
   }
 
   function done () {
-    self.emit('flush');
+    emit('flush');
 
     // fake drain
     // defer to next tick to allow Socket to clear writeBuffer
     setTimeout(function () {
-      self.writable = true;
-      self.emit('drain');
+      _writable = true;
+      emit('drain');
     }, 0);
   }
 };
 
-/**
- * Called upon close
- *
- * @api private
- */
-
 void WS::onClose()
 {
-  Transport::onClose();
+    Transport::onClose();
 }
-
-/**
- * Closes socket.
- *
- * @api private
- */
 
 void WS::doClose()
 {
-  if (typeof this.ws !== 'undefined') {
-    this.ws.close();
-  }
+    _ws->close();
 }
 
 /**
@@ -194,8 +170,8 @@ WS.prototype.uri = function () {
   var port = '';
 
   // avoid port if default for schema
-  if (this.port && (('wss' === schema && Number(this.port) !== 443) ||
-    ('ws' === schema && Number(this.port) !== 80))) {
+  if (this.port && (('wss' == schema && Number(this.port) != 443) ||
+    ('ws' == schema && Number(this.port) != 80))) {
     port = ':' + this.port;
   }
 
@@ -205,7 +181,7 @@ WS.prototype.uri = function () {
   }
 
   // communicate binary support capabilities
-  if (!this.supportsBinary) {
+  if (!_supportsBinary) {
     query.b64 = 1;
   }
 
@@ -216,7 +192,7 @@ WS.prototype.uri = function () {
     query = '?' + query;
   }
 
-  var ipv6 = this.hostname.indexOf(':') !== -1;
+  var ipv6 = this.hostname.indexOf(':') != -1;
   return schema + '://' + (ipv6 ? '[' + this.hostname + ']' : this.hostname) + port + this.path + query;
 };
 
@@ -228,5 +204,5 @@ WS.prototype.uri = function () {
  */
 
 WS.prototype.check = function () {
-  return !!WebSocket && !('__initialize' in WebSocket && this.name === WS.prototype.name);
+  return !!WebSocket && !('__initialize' in WebSocket && this.name == WS.prototype.name);
 };

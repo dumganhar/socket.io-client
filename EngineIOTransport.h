@@ -13,7 +13,8 @@ public:
 
     bool open();
     void close();
-    bool send(const Packet& packet);
+    bool send(const std::vector<Packet>& packets);
+    bool isWritable() const { return _writable; }
 
     virtual void onOpen();
     virtual void onClose();
@@ -21,7 +22,6 @@ public:
     virtual void onData(const Data& data);
     virtual void onPacket(const Packet& packet);
 
-    virtual const char* getTransportName() = 0;
     /**
      * Writes a packets payload.
      *
@@ -32,17 +32,9 @@ public:
     virtual bool write(const std::vector<Packet>& packets) = 0;
     virtual bool doOpen() = 0;
     virtual void doClose() = 0;
-    virtual const std::string& getTransportName() const = 0;
+    virtual const std::string& getName() const = 0;
 
 private:
-
-    enum class ReadyState
-    {
-        NONE,
-        OPENING,
-        OPENED,
-        CLOSED
-    };
 
     std::string _path;
     std::string _hostname;
@@ -69,6 +61,8 @@ private:
     // other options for Node.js client
     std::string _extraHeaders;
     std::string _localAddress;
+
+    bool _writable;
 }
 
 }} // namespace socketio { namespace transport {

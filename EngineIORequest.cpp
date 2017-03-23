@@ -10,8 +10,8 @@ function Request (opts) {
   this.uri = opts.uri;
   this.xd = !!opts.xd;
   this.xs = !!opts.xs;
-  this.async = false !== opts.async;
-  this.data = undefined !== opts.data ? opts.data : null;
+  this.async = false != opts.async;
+  this.data = undefined != opts.data ? opts.data : null;
   this.agent = opts.agent;
   this.isBinary = opts.isBinary;
   this.supportsBinary = opts.supportsBinary;
@@ -74,7 +74,7 @@ void Request::create()
       xhr.responseType = 'arraybuffer';
     }
 
-    if ('POST' === this.method) {
+    if ('POST' == this.method) {
       try {
         if (this.isBinary) {
           xhr.setRequestHeader('Content-type', 'application/octet-stream');
@@ -106,8 +106,8 @@ void Request::create()
       };
     } else {
       xhr.onreadystatechange = function () {
-        if (4 !== xhr.readyState) return;
-        if (200 === xhr.status || 1223 === xhr.status) {
+        if (4 != xhr.readyState) return;
+        if (200 == xhr.status || 1223 == xhr.status) {
           self.onLoad();
         } else {
           // make sure the `error` event handler that's user-set
@@ -177,7 +177,7 @@ Request.prototype.onError = function (err) {
  */
 
 Request.prototype.cleanup = function (fromError) {
-  if ('undefined' === typeof this.xhr || null === this.xhr) {
+  if ('undefined' == typeof this.xhr || null == this.xhr) {
     return;
   }
   // xmlhttprequest
@@ -213,7 +213,7 @@ Request.prototype.onLoad = function () {
     try {
       contentType = this.xhr.getResponseHeader('Content-Type').split(';')[0];
     } catch (e) {}
-    if (contentType === 'application/octet-stream') {
+    if (contentType == 'application/octet-stream') {
       data = this.xhr.response || this.xhr.responseText;
     } else {
       if (!this.supportsBinary) {
@@ -247,7 +247,7 @@ Request.prototype.onLoad = function () {
  */
 
 Request.prototype.hasXDR = function () {
-  return 'undefined' !== typeof global.XDomainRequest && !this.xs && this.enablesXDR;
+  return 'undefined' != typeof global.XDomainRequest && !this.xs && this.enablesXDR;
 };
 
 /**

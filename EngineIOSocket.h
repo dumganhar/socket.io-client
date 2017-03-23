@@ -30,6 +30,8 @@ public:
      */
     void send(const std::string& msg, const Opts& options, const std::function<void()>& fn);
 
+    const std::string& getId() const { return _id; }
+
     /**
      * Called when connection is deemed open.
      *
@@ -52,7 +54,7 @@ private:
      * @api private
      */
 
-    void setTransport(Transport* transport);
+    void setTransport(std::shared_ptr<Transport> transport);
 
     /**
      * Creates transport of the given type.
@@ -62,7 +64,7 @@ private:
      * @api private
      */
 
-    Transport* createTransport(const std::string& name);
+    std::shared_ptr<Transport> createTransport(const std::string& name);
 
     /**
      * Probes a transport.
@@ -166,4 +168,31 @@ private:
 
     void filterUpgrades(const std::vector<std::string>& upgrades);
 
+    std::string _id;
+    std::vector<std::string> _transports;
+    std::vector<std::string> _upgrades;
+
+    std::vector<Packet> _writeBuffer;
+
+    std::shared_ptr<Transport> _transport;
+    ReadyState _readyState;
+    bool _rememberUpgrade;
+    bool _upgrading;
+    bool _upgrade;
+
+    float _pingInterval;
+    float _pingTimeout;
+
+    ListenerId _heartbeatId;
+
+    size_t _prevBufferLen;
+
+    // Listener Ids
+    ListenerId _idOnTransportOpen;
+    ListenerId _idOnerror;
+    ListenerId _idOnTransportClose;
+    ListenerId _idOnclose;
+    ListenerId _idOnupgrade;
+    ListenerId _idCleanupAndCloseUpgrade;
+    ListenerId _idCleanupAndCloseUpgradeError;
 };

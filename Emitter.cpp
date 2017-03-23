@@ -1,5 +1,15 @@
 #include "Emitter.h"
 
+Emitter::Emitter()
+{
+
+}
+
+Emitter::~Emitter()
+{
+
+}
+
 void Emitter::on(const std::string& eventName, const std::function<void(const Args&)>& fn, int64_t key)
 {
   Callback cb(fn, key);

@@ -26,39 +26,24 @@ const char* types = {
   "BINARY_ACK"
 };
 
-/**
- * Encode a packet as a single string if non-binary, or as a
- * buffer sequence, depending on packet type.
- *
- * @param {Object} obj - packet object
- * @param {Function} callback - function to handle encodings (likely engine.write)
- * @return Calls callback with Array of encodings
- * @api public
- */
+
 
 Encoder.prototype.encode = function(obj, callback){
   debug('encoding packet %j', obj);
 
-  if (exports.BINARY_EVENT == obj.type || exports.BINARY_ACK == obj.type) {
+  if (PacketType::BINARY_EVENT == obj.type || PacketType::BINARY_ACK == obj.type) {
     encodeAsBinary(obj, callback);
   }
   else {
     var encoding = encodeAsString(obj);
     callback([encoding]);
   }
-};
+}
 
-/**
- * Encode packet as string.
- *
- * @param {Object} packet
- * @return {String} encoded
- * @api private
- */
-
-function encodeAsString(obj) {
-  var str = '';
-  var nsp = false;
+std::string Encoder::encodeAsString(const Packet& obj)
+{
+  std::string str = "";
+  bool nsp = false;
 
   // first is type
   str += obj.type;
@@ -130,21 +115,18 @@ function Decoder() {
   this.reconstructor = null;
 }
 
-/**
- * Mix in `Emitter` with Decoder.
- */
+Decoder::Decoder()
+{
 
-Emitter(Decoder.prototype);
+}
 
-/**
- * Decodes an ecoded packet string into packet JSON.
- *
- * @param {String} obj - encoded packet
- * @return {Object} packet
- * @api public
- */
+Decoder::~Decoder()
+{
 
-Decoder.prototype.add = function(obj) {
+}
+
+void Decoder::add(const Data& obj)
+{
   var packet;
   if ('string' == typeof obj) {
     packet = decodeString(obj);
@@ -152,7 +134,7 @@ Decoder.prototype.add = function(obj) {
       this.reconstructor = new BinaryReconstructor(packet);
 
       // no attachments, labeled binary but no binary data to follow
-      if (this.reconstructor.reconPack.attachments === 0) {
+      if (this.reconstructor.reconPack.attachments == 0) {
         this.emit('decoded', packet);
       }
     } else { // non-binary full packet
@@ -175,16 +157,9 @@ Decoder.prototype.add = function(obj) {
   }
 };
 
-/**
- * Decode a packet String (JSON data)
- *
- * @param {String} str
- * @return {Object} packet
- * @api private
- */
-
-function decodeString(str) {
-  var p = {};
+Packet Decoder::decodeString(const std::string& str)
+{
+  Packet p;
   var i = 0;
 
   // look up type
@@ -219,7 +194,7 @@ function decodeString(str) {
 
   // look up id
   var next = str.charAt(i + 1);
-  if ('' !== next && Number(next) == next) {
+  if ('' != next && Number(next) == next) {
     p.id = '';
     while (++i) {
       var c = str.charAt(i);
@@ -251,13 +226,8 @@ function tryParse(p, str) {
   return p; 
 };
 
-/**
- * Deallocates a parser's resources
- *
- * @api public
- */
-
-Decoder.prototype.destroy = function() {
+void Decoder::destroy()
+{
   if (this.reconstructor) {
     this.reconstructor.finishedReconstruction();
   }

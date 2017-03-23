@@ -29,9 +29,9 @@ function url (uri, loc) {
   if (null == uri) uri = loc.protocol + '//' + loc.host;
 
   // relative path support
-  if ('string' === typeof uri) {
-    if ('/' === uri.charAt(0)) {
-      if ('/' === uri.charAt(1)) {
+  if ('string' == typeof uri) {
+    if ('/' == uri.charAt(0)) {
+      if ('/' == uri.charAt(1)) {
         uri = loc.protocol + uri;
       } else {
         uri = loc.host + uri;
@@ -40,7 +40,7 @@ function url (uri, loc) {
 
     if (!/^(https?|wss?):\/\//.test(uri)) {
       debug('protocol-less url %s', uri);
-      if ('undefined' !== typeof loc) {
+      if ('undefined' != typeof loc) {
         uri = loc.protocol + '//' + uri;
       } else {
         uri = 'https://' + uri;
@@ -63,13 +63,13 @@ function url (uri, loc) {
 
   obj.path = obj.path || '/';
 
-  var ipv6 = obj.host.indexOf(':') !== -1;
+  var ipv6 = obj.host.indexOf(':') != -1;
   var host = ipv6 ? '[' + obj.host + ']' : obj.host;
 
   // define unique id
   obj.id = obj.protocol + '://' + host + ':' + obj.port;
   // define href
-  obj.href = obj.protocol + '://' + host + (loc && loc.port === obj.port ? '' : (':' + obj.port));
+  obj.href = obj.protocol + '://' + host + (loc && loc.port == obj.port ? '' : (':' + obj.port));
 
   return obj;
 }

@@ -27,7 +27,7 @@ public:
      * @api public
      */
 
-    void send();
+    void send(const Args& args);
 
     /**
      * Disconnects the socket manually.
@@ -44,9 +44,12 @@ public:
      * @return {Socket} self
      * @api public
      */
-    void compress(bool isCompress);
+    void setCompress(bool compress);
+
+    const std::string& getId() const { return _id; }
 
     virtual void emit(const std::string& eventName, const Args& args) override;
+
 
 private:
 
@@ -152,11 +155,20 @@ private:
 
     void destroy();
 
+    void setId(const std::string& id) { _id = id; }
+
 
     SocketIOManager* _io;
     std::string _nsp;
+    std::string _id; // An unique identifier for the socket session. Set after the connect event is triggered, and updated after the reconnect event.
     int _ids;
     std::unordered_map<int, std::function<void(SocketIOSocket*, const Packet&)>> _acks;
     std::vector<Data> _receiveBuffer;
+    std::vector<Packet> _sendBuffer;
+    std::vector<OnObj> _subs;
     bool _connected;
+    bool _disconnected;
+    bool _compress;
+
+    friend class SocketIOManager;
 };

@@ -3,7 +3,7 @@
 SocketIOManager::SocketIOManager(const std::string& uri, const Opts& opts)
 {
   if (!(this instanceof Manager)) return new Manager(uri, opts);
-  if (uri && ('object' === typeof uri)) {
+  if (uri && ('object' == typeof uri)) {
     opts = uri;
     uri = undefined;
   }
@@ -13,7 +13,7 @@ SocketIOManager::SocketIOManager(const std::string& uri, const Opts& opts)
   _nsps.clear();
   _subs.clear();
   this.opts = opts;
-  this.reconnection(opts.reconnection !== false);
+  this.reconnection(opts.reconnection != false);
   this.reconnectionAttempts(opts.reconnectionAttempts || Infinity);
   this.reconnectionDelay(opts.reconnectionDelay || 1000);
   this.reconnectionDelayMax(opts.reconnectionDelayMax || 5000);
@@ -24,34 +24,32 @@ SocketIOManager::SocketIOManager(const std::string& uri, const Opts& opts)
     jitter: this.randomizationFactor()
   });
   this.timeout(null == opts.timeout ? 20000 : opts.timeout);
-  this.readyState = 'closed';
+  _readyState = 'closed';
   _uri = uri;
   _connecting.clear();
   this.lastPing = null;
-  this.encoding = false;
-  this.packetBuffer = [];
-  this.encoder = new parser.Encoder();
-  this.decoder = new parser.Decoder();
-  this.autoConnect = opts.autoConnect !== false;
-  if (this.autoConnect) this.connect();
+  _encoding = false;
+  _packetBuffer.clear();
+  _encoder = new Encoder();
+  _decoder = new Decoder();
+  _autoConnect = opts.autoConnect;
+  if (_autoConnect)
+    connect();
 }
 
-void SocketIOManager::emitAll()
+void SocketIOManager::emitAll(const std::string& eventName, const Args& args)
 {
-  this.emit.apply(this, arguments);
-  for (var nsp in _nsps) {
-    if (has.call(_nsps, nsp)) {
-      _nsps[nsp].emit.apply(_nsps[nsp], arguments);
-    }
+  Emitter::emit(eventName, args);
+
+  for (auto& nsp : _nsps) {
+      nsp->emit(args);
   }
-};
+}
 
 void SocketIOManager::updateSocketIds()
 {
-  for (var nsp in _nsps) {
-    if (has.call(_nsps, nsp)) {
-      _nsps[nsp].id = _engine.id;
-    }
+  for (auto& nsp : _nsps) {
+      nsp->setId(_engine->getId());
   }
 };
 
@@ -105,7 +103,7 @@ bool SocketIOManager::isTimeoutEnabled() const
 void SocketIOManager::maybeReconnectOnOpen()
 {
   // Only try to reconnect if it's the first time we're connecting
-  if (!_reconnecting && this._reconnection && this.backoff.attempts === 0) {
+  if (!_reconnecting && this._reconnection && this.backoff.attempts == 0) {
     // keeps reconnection from firing twice for the same reconnection loop
     this.reconnect();
   }
@@ -114,18 +112,18 @@ void SocketIOManager::maybeReconnectOnOpen()
 //open 
 void SocketIOManager::connect(const std::function<void()>& fn, const Opts& opts)
 {
-  debug('readyState %s', this.readyState);
-  if (~this.readyState.indexOf('open')) return this;
+  debug('readyState %s', _readyState);
+  if (~_readyState.indexOf("open")) return this;
 
   debug('opening %s', this.uri);
   _engine = new EngineIOSocket(this.uri, this.opts);
   var socket = _engine;
   var self = this;
-  this.readyState = 'opening';
-  this.skipReconnect = false;
+  _readyState = 'opening';
+  _skipReconnect = false;
 
   // emit `open`
-  var openSub = on(socket, 'open', function () {
+  var openSub = on(socket, "open", function () {
     self.onopen();
     fn && fn();
   });
@@ -175,63 +173,69 @@ void SocketIOManager::connect(const std::function<void()>& fn, const Opts& opts)
 
 void SocketIOManager::onopen()
 {
-  debug('open');
+  debug("open");
 
   // clear old subs
   this.cleanup();
 
   // mark as open
-  this.readyState = 'open';
-  this.emit('open');
+  _readyState = "open";
+  emit("open");
 
   // add new subs
-  var socket = _engine;
-  _subs.push(on(socket, 'data', bind(this, 'ondata')));
-  _subs.push(on(socket, 'ping', bind(this, 'onping')));
-  _subs.push(on(socket, 'pong', bind(this, 'onpong')));
-  _subs.push(on(socket, 'error', bind(this, 'onerror')));
-  _subs.push(on(socket, 'close', bind(this, 'onclose')));
-  _subs.push(on(this.decoder, 'decoded', bind(this, 'ondecoded')));
+  auto socket = _engine;
+  _subs.push_back(on(socket, "data", std::bind(SocketIOManager::ondata, this)));
+  _subs.push_back(on(socket, "ping", std::bind(SocketIOManager::onping, this)));
+  _subs.push_back(on(socket, "pong", std::bind(SocketIOManager::onpong, this)));
+  _subs.push_back(on(socket, "error", std::bind(SocketIOManager::onerror, this)));
+  _subs.push_back(on(socket, "close", std::bind(SocketIOManager::onclose, this)));
+  _subs.push_back(on(_decoder, "decoded", std::bind(SocketIOManager::ondecoded, this)));
 };
 
 void SocketIOManager::onping()
 {
   this.lastPing = new Date();
-  this.emitAll('ping');
+  emitAll('ping');
 };
 
 void SocketIOManager::onpong()
 {
-  this.emitAll('pong', new Date() - this.lastPing);
+  emitAll('pong', new Date() - this.lastPing);
 }
 
 void SocketIOManager::ondata(const Data& data)
 {
-  this.decoder.add(data);
+  _decoder->add(data);
 }
 
 void SocketIOManager::ondecoded(const Packet& packet)
 {
-  this.emit('packet', packet);
+  emit("packet", packet);
 };
 
 void SocketIOManager::onerror(const std::string& err)
 {
   debug('error', err);
-  this.emitAll('error', err);
+  emitAll('error', err);
 };
 
-SocketIOSocket* SocketIOManager::createSocket(const std::string& nsp, const Opts& opts)
+std::shared_ptr<SocketIOSocket> SocketIOManager::createSocket(const std::string& nsp, const Opts& opts)
 {
   auto iter = _nsps.find(nsp);
-  SocketIOSocket* socket = nullptr;
+  std::shared_ptr<SocketIOSocket> socket;
   if (iter == _nsps.end()) {
     socket = new SocketIOSocket(this, nsp, opts);
     _nsps[nsp] = socket;
-    var self = this;
-    socket.on('connecting', onConnecting);
-    socket.on('connect', function () {
-      socket.id = _engine.id;
+
+    auto onConnecting = []() {
+      if (_connecting.find(socket) == _connecting.end()) {
+        _connecting.push_back(socket);
+      }
+    };
+
+    socket->on("connecting", onConnecting);
+    socket->on("connect", []() {
+      socket->setId(_engine->getId());
     });
 
     if (_autoConnect) {
@@ -242,16 +246,10 @@ SocketIOSocket* SocketIOManager::createSocket(const std::string& nsp, const Opts
     socket = iter->second;
   }
 
-  function onConnecting () {
-    if (!~indexOf(_connecting, socket)) {
-      _connecting.push_back(socket);
-    }
-  }
-
   return socket;
 };
 
-void SocketIOManager::destroySocket(SocketIOSocket* socket)
+void SocketIOManager::destroySocket(std::shared_ptr<SocketIOSocket> socket)
 {
   auto iter = _connecting.find(socket);
   if (iter != _connecting.end())
@@ -268,29 +266,32 @@ void SocketIOManager::destroySocket(SocketIOSocket* socket)
 void SocketIOManager::sendPacket(const Packet& packet)
 {
   debug('writing packet %j', packet);
-  var self = this;
-  if (packet.query && packet.type === 0) packet.nsp += '?' + packet.query;
+  if (packet.query && packet.type == 0)
+      packet.nsp += '?' + packet.query;
 
-  if (!self.encoding) {
+  if (!_encoding) {
     // encode, then write to engine with result
-    self.encoding = true;
-    this.encoder.encode(packet, function (encodedPackets) {
-      for (var i = 0; i < encodedPackets.length; i++) {
-        _engine.write(encodedPackets[i], packet.options);
+    _encoding = true;
+    _encoder->encode(packet, [this](encodedPackets) {
+
+      for (auto& encodedPacket : encodedPackets)
+      {
+          _engine.write(encodedPacket, packet.options);
       }
-      self.encoding = false;
-      self.processPacketQueue();
+      _encoding = false;
+      processPacketQueue();
     });
   } else { // add packet to the queue
-    self.packetBuffer.push(packet);
+    _packetBuffer.push_back(packet);
   }
 };
 
 void SocketIOManager::processPacketQueue()
 {
-  if (this.packetBuffer.length > 0 && !this.encoding) {
-    var pack = this.packetBuffer.shift();
-    this.packet(pack);
+  if (!_packetBuffer.empty() && !_encoding) {
+    auto& pack = _packetBuffer[0];
+    sendPacket(pack);
+    _packetBuffer.erase(_packetBuffer.begin());
   }
 };
 
@@ -304,8 +305,8 @@ void SocketIOManager::cleanup()
     sub.destroy();
   }
 
-  this.packetBuffer = [];
-  this.encoding = false;
+  _packetBuffer.clear();
+  _encoding = false;
   this.lastPing = null;
 
   this.decoder.destroy();
@@ -314,16 +315,17 @@ void SocketIOManager::cleanup()
 void SocketIOManager::disconnect()
 {
   debug('disconnect');
-  this.skipReconnect = true;
+  _skipReconnect = true;
   _reconnecting = false;
-  if ('opening' === this.readyState) {
+  if (ReadyState::OPENING == _readyState) {
     // `onclose` will not fire because
     // an open event never happened
-    this.cleanup();
+    cleanup();
   }
   this.backoff.reset();
-  this.readyState = 'closed';
-  if (_engine) _engine.close();
+  _readyState = ReadyState::CLOSED;
+  if (_engine)
+    _engine->close();
 };
 
 void SocketIOManager::onclose(const std::string& reason)
@@ -332,24 +334,24 @@ void SocketIOManager::onclose(const std::string& reason)
 
   this.cleanup();
   this.backoff.reset();
-  this.readyState = 'closed';
-  this.emit('close', reason);
+  _readyState = ReadyState::CLOSED;
+  emit("close", reason);
 
-  if (this._reconnection && !this.skipReconnect) {
+  if (this._reconnection && !_skipReconnect) {
     this.reconnect();
   }
 };
 
 void SocketIOManager::reconnect()
 {
-  if (_reconnecting || this.skipReconnect) return this;
+  if (_reconnecting || _skipReconnect) return this;
 
   var self = this;
 
   if (this.backoff.attempts >= this._reconnectionAttempts) {
     debug('reconnect failed');
     this.backoff.reset();
-    this.emitAll('reconnect_failed');
+    emitAll('reconnect_failed');
     _reconnecting = false;
   } else {
     var delay = this.backoff.duration();
@@ -357,24 +359,24 @@ void SocketIOManager::reconnect()
 
     _reconnecting = true;
     var timer = setTimeout(function () {
-      if (self.skipReconnect) return;
+      if (_skipReconnect) return;
 
       debug('attempting reconnect');
       self.emitAll('reconnect_attempt', self.backoff.attempts);
       self.emitAll('reconnecting', self.backoff.attempts);
 
       // check again for the case socket closed in above events
-      if (self.skipReconnect) return;
+      if (_skipReconnect) return;
 
       this->connect(function (err) {
         if (err) {
           debug('reconnect attempt error');
           _reconnecting = false;
-          self.reconnect();
-          self.emitAll('reconnect_error', err.data);
+          reconnect();
+          emitAll('reconnect_error', err.data);
         } else {
           debug('reconnect success');
-          self.onreconnect();
+          onreconnect();
         }
       });
     }, delay);
@@ -393,5 +395,5 @@ void SocketIOManager::onreconnect()
   _reconnecting = false;
   this.backoff.reset();
   this.updateSocketIds();
-  this.emitAll('reconnect', attempt);
+  emitAll('reconnect', attempt);
 };

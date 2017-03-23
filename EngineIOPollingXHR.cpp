@@ -11,7 +11,7 @@ XHR::XHR(const Opts& opts)
   this.requestTimeout = opts.requestTimeout;
 
   if (global.location) {
-    var isSSL = 'https:' === location.protocol;
+    var isSSL = 'https:' == location.protocol;
     var port = location.port;
 
     // some user agents have empty `location.port`
@@ -19,9 +19,9 @@ XHR::XHR(const Opts& opts)
       port = isSSL ? 443 : 80;
     }
 
-    this.xd = opts.hostname !== global.location.hostname ||
-      port !== opts.port;
-    this.xs = opts.secure !== isSSL;
+    this.xd = opts.hostname != global.location.hostname ||
+      port != opts.port;
+    this.xs = opts.secure != isSSL;
   } else {
     this.extraHeaders = opts.extraHeaders;
   }
@@ -63,7 +63,7 @@ void XHR::request(const Opts& opts)
 
 void XHR::doWrite(const Data& data, const std::function<void()>& fn)
 {
-  var isBinary = typeof data !== 'string' && data !== undefined;
+  var isBinary = typeof data != 'string' && data != undefined;
   var req = request({ method: 'POST', data: data, isBinary: isBinary });
   var self = this;
   req.on('success', fn);

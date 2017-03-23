@@ -51,7 +51,7 @@ std::string encodePacket(const Packet& packet, bool supportsBinary, bool utf8enc
   var encoded = packets[packet.type];
 
   // data fragment is optional
-  if (undefined !== packet.data) {
+  if (undefined != packet.data) {
     encoded += utf8encode ? utf8.encode(String(packet.data)) : String(packet.data);
   }
 
@@ -106,7 +106,7 @@ Packet decodePacket(const Data& data, bool binaryType, bool utf8decode)
 
     if (utf8decode) {
       data = tryDecode(data);
-      if (data === false) {
+      if (data == false) {
         return err;
       }
     }
@@ -123,7 +123,7 @@ Packet decodePacket(const Data& data, bool binaryType, bool utf8decode)
   }
 
   // Binary data
-  if (binaryType === 'arraybuffer') {
+  if (binaryType == 'arraybuffer') {
     // wrap Buffer/ArrayBuffer data into an Uint8Array
     var intArray = new Uint8Array(data);
     var type = intArray[0];
@@ -156,7 +156,7 @@ function tryDecode(data) {
 exports.decodeBase64Packet = function(msg, binaryType) {
   var type = packetslist[msg.charAt(0)];
   var data = new Buffer(msg.substr(1), 'base64');
-  if (binaryType === 'arraybuffer') {
+  if (binaryType == 'arraybuffer') {
     var abv = new Uint8Array(data.length);
     for (var i = 0; i < abv.length; i++){
       abv[i] = data[i];
@@ -244,7 +244,7 @@ exports.decodePayload = function (data, binaryType, callback) {
     return exports.decodePayloadAsBinary(data, binaryType, callback);
   }
 
-  if (typeof binaryType === 'function') {
+  if (typeof binaryType == 'function') {
     callback = binaryType;
     binaryType = null;
   }
@@ -285,7 +285,7 @@ exports.decodePayload = function (data, binaryType, callback) {
         }
 
         var ret = callback(packet, i + n, l);
-        if (false === ret) return;
+        if (false == ret) return;
       }
 
       // advance cursor
@@ -373,7 +373,7 @@ exports.encodePayloadAsBinary = function (packets, callback) {
   function encodeOne(p, doneCallback) {
     exports.encodePacket(p, true, true, function(packet) {
 
-      if (typeof packet === 'string') {
+      if (typeof packet == 'string') {
         var encodingLength = '' + packet.length;
         var sizeBuffer = new Buffer(encodingLength.length + 2);
         sizeBuffer[0] = 0; // is a string (not true binary = 0)
@@ -410,7 +410,7 @@ exports.encodePayloadAsBinary = function (packets, callback) {
  */
 
 exports.decodePayloadAsBinary = function (data, binaryType, callback) {
-  if (typeof binaryType === 'function') {
+  if (typeof binaryType == 'function') {
     callback = binaryType;
     binaryType = null;
   }
@@ -420,7 +420,7 @@ exports.decodePayloadAsBinary = function (data, binaryType, callback) {
 
   while (bufferTail.length > 0) {
     var strLen = '';
-    var isString = bufferTail[0] === 0;
+    var isString = bufferTail[0] == 0;
     var numberTooLong = false;
     for (var i = 1; ; i++) {
       if (bufferTail[i] == 255)  break;

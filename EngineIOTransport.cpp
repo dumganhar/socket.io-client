@@ -91,13 +91,12 @@ void Transport::close()
  * @api private
  */
 
-bool Transport::send(const Packet& packets)
+bool Transport::send(const std::vector<Packet>& packets)
 {
   if (ReadyState::OPEN == _readyState) {
-    write(packets);
-  } else {
-    throw new Error('Transport not open');
+      return write(packets);
   }
+  return false;
 }
 
 /**
@@ -110,7 +109,7 @@ void Transport::onOpen()
 {
   _readyState = ReadyState::OPEN;
   _writable = true;
-  emit('open');
+  emit("open");
 }
 
 /**
@@ -132,7 +131,7 @@ void Transport::onData(const Data& data)
 
 void Transport::onPacket(const Packet& packet)
 {
-  emit('packet', packet);
+  emit("packet", packet);
 }
 
 /**
@@ -144,7 +143,7 @@ void Transport::onPacket(const Packet& packet)
 void Transport::onClose()
 {
   _readyState = ReadyState::CLOSED;
-  emit('close');
+  emit("close");
 }
 
 }} // namespace socketio { namespace transport {

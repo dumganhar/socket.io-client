@@ -5,20 +5,20 @@
  * @api private
  */
 
-enum class events = {
-  connect: 1,
-  connect_error: 1,
-  connect_timeout: 1,
-  connecting: 1,
-  disconnect: 1,
-  error: 1,
-  reconnect: 1,
-  reconnect_attempt: 1,
-  reconnect_failed: 1,
-  reconnect_error: 1,
-  reconnecting: 1,
-  ping: 1,
-  pong: 1
+static std::vector<std::string> __events = {
+  "connect",
+  "connect_error",
+  "connect_timeout",
+  "connecting",
+  "disconnect",
+  "error",
+  "reconnect",
+  "reconnect_attempt",
+  "reconnect_failed",
+  "reconnect_error",
+  "reconnecting",
+  "ping",
+  "pong"
 };
 
 
@@ -29,25 +29,22 @@ SocketIOSocket::SocketIOSocket(SocketIOManager* io, const std::string& nsp, cons
   _ids = 0;
   _acks.clear();
   _receiveBuffer.clear();
-  this.sendBuffer = [];
+  _sendBuffer.clear();
   _connected = false;
-  this.disconnected = true;
+  _disconnected = true;
   if (opts && opts.query) {
     this.query = opts.query;
   }
-  if (_io.autoConnect) this.open();
+  if (_io->autoConnect) this.open();
 }
 
 void SocketIOSocket::subEvents()
 {
-  if (this.subs) return;
+  if (_subs) return;
 
-  var io = _io;
-  this.subs = [
-    on(io, 'open', bind(this, 'onopen')),
-    on(io, 'packet', bind(this, 'onpacket')),
-    on(io, 'close', bind(this, 'onclose'))
-  ];
+  _subs.push_back(on(_io, "open", bind(this, 'onopen')));
+  _subs.push_back(on(_io, "packet", bind(this, 'onpacket')));
+  _subs.push_back(on(_io, "close", bind(this, 'onclose')));
 }
 
 // connect
@@ -56,37 +53,37 @@ void SocketIOSocket::open()
   if (_connected) return;
 
   subEvents();
-  _io.open(); // ensure open
-  if ('open' === _io.readyState) this.onopen();
-  this.emit('connecting');
-  return this;
+  _io->open(); // ensure open
+  if (ReadyState::OPEN == _io->getReadyState())
+    onopen();
+  emit("connecting");
 }
 
-void SocketIOSocket::send()
+void SocketIOSocket::send(const Args& args)
 {
-  var args = toArray(arguments);
-  args.unshift('message');
-  this.emit.apply(this, args);
-  return this;
+  emit("message", args);
 }
 
 void SocketIOSocket::emit(const std::string& eventName, const Args& args)
 {
-  if (events.hasOwnProperty(ev)) {
-    emit.apply(this, arguments);
-    return this;
+  if (__events.find(eventName) != __events.end())
+  {
+    Emitter::emit(eventName, args);
+    return;
   }
 
   var args = toArray(arguments);
   var parserType = parser.EVENT; // default
-  if (hasBin(args)) { parserType = parser.BINARY_EVENT; } // binary
+  if (hasBin(args)) { 
+    parserType = parser.BINARY_EVENT;
+  } // binary
   var packet = { type: parserType, data: args };
 
   packet.options = {};
-  packet.options.compress = !this.flags || false !== this.flags.compress;
+  packet.options.compress = _compress;
 
   // event ack callback
-  if ('function' === typeof args[args.length - 1]) {
+  if ('function' == typeof args[args.length - 1]) {
     debug('emitting packet with ack id %d', this.ids);
     _acks[this.ids] = args.pop();
     packet.id = this.ids++;
@@ -95,17 +92,13 @@ void SocketIOSocket::emit(const std::string& eventName, const Args& args)
   if (_connected) {
     sendPacket(packet);
   } else {
-    this.sendBuffer.push(packet);
+    _sendBuffer.push_back(packet);
   }
-
-  delete this.flags;
-
-  return this;
 }
 
 void SocketIOSocket::sendPacket(const Packet& packet)
 {
-  packet.nsp = this.nsp;
+  packet.nsp = _nsp;
   _io->sendPacket(packet);
 }
 
@@ -114,11 +107,11 @@ void SocketIOSocket::onopen()
   debug('transport is open - connecting');
 
   // write connect packet if necessary
-  if ('/' !== this.nsp) {
+  if ("/" != _nsp) {
     if (this.query) {
-      this.packet({type: parser.CONNECT, query: this.query});
+      sendPacket({type: parser.CONNECT, query: this.query});
     } else {
-      this.packet({type: parser.CONNECT});
+      sendPacket({type: parser.CONNECT});
     }
   }
 }
@@ -127,14 +120,14 @@ void SocketIOSocket::onclose(const std::string& reason)
 {
   debug('close (%s)', reason);
   _connected = false;
-  this.disconnected = true;
+  _disconnected = true;
   delete this.id;
   this.emit('disconnect', reason);
 }
 
 void SocketIOSocket::onpacket(const Packet& packet)
 {
-  if (packet.nsp !== this.nsp) return;
+  if (packet.nsp != _nsp) return;
 
   switch (packet.type) {
     case parser.CONNECT:
@@ -207,7 +200,7 @@ void SocketIOSocket::ack(int id)
 void SocketIOSocket::onack(const Packet& packet)
 {
   var ack = _acks[packet.id];
-  if ('function' === typeof ack) {
+  if ('function' == typeof ack) {
     debug('calling ack %s with %j', packet.id, packet.data);
     ack.apply(this, packet.data);
     delete _acks[packet.id];
@@ -219,8 +212,8 @@ void SocketIOSocket::onack(const Packet& packet)
 void SocketIOSocket::onconnect()
 {
   _connected = true;
-  this.disconnected = false;
-  this.emit('connect');
+  _disconnected = false;
+  this.emit("connect");
   this.emitBuffered();
 }
 
@@ -232,52 +225,50 @@ void SocketIOSocket::emitBuffered()
   }
   _receiveBuffer.clear();
 
-  for (i = 0; i < this.sendBuffer.length; i++) {
-    this.packet(this.sendBuffer[i]);
+  for (i = 0; i < _sendBuffer.length; i++) {
+    sendPacket(_sendBuffer[i]);
   }
-  this.sendBuffer = [];
+  _sendBuffer = [];
 }
 
 void SocketIOSocket::ondisconnect()
 {
-  debug('server disconnect (%s)', this.nsp);
-  this.destroy();
+  debug('server disconnect (%s)', _nsp);
+  destroy();
   this.onclose('io server disconnect');
 }
 
 void SocketIOSocket::destroy()
 {
-  if (this.subs) {
+  if (_subs) {
     // clean subscriptions to avoid reconnections
-    for (var i = 0; i < this.subs.length; i++) {
-      this.subs[i].destroy();
+    for (var i = 0; i < _subs.length; i++) {
+      _subs[i].destroy();
     }
-    this.subs = null;
+    _subs.clear();
   }
 
-  _io.destroy(this);
+  _io->destroySocket(this);
 }
 
 // disconnect
 void SocketIOSocket::close()
 {
   if (_connected) {
-    debug('performing disconnect (%s)', this.nsp);
-    this.packet({ type: parser.DISCONNECT });
+    debug('performing disconnect (%s)', _nsp);
+    sendPacket({ type: parser.DISCONNECT });
   }
 
   // remove socket from pool
-  this.destroy();
+  destroy();
 
   if (_connected) {
     // fire events
     this.onclose('io client disconnect');
   }
-  return this;
 }
 
-void SocketIOSocket::compress(bool isCompress)
+void SocketIOSocket::setCompress(bool compress)
 {
-  this.flags = this.flags || {};
-  this.flags.compress = isCompress;
+    _compress = compress;
 }

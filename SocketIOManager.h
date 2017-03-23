@@ -5,6 +5,8 @@ class SocketIOManager : public Emitter
 public:
     SocketIOManager(const std::string& uri, const Opts& opts);
 
+    ReadyState getReadyState() const { return _readyState; }
+
     /**
      * Sets the current transport `socket`.
      *
@@ -22,7 +24,7 @@ public:
      * @api public
      */
 
-    SocketIOSocket* createSocket(const std::string& nsp, const Opts& opts);
+    std::shared_ptr<SocketIOSocket> createSocket(const std::string& nsp, const Opts& opts);
 
     /**
      * Called upon a socket close.
@@ -30,7 +32,7 @@ public:
      * @param {Socket} socket
      */
 
-    void destroySocket(SocketIOSocket* socket);
+    void destroySocket(std::shared_ptr<SocketIOSocket> socket);
 
     /**
      * Sets the `reconnection` config.
@@ -89,7 +91,7 @@ private:
      * @api private
      */
 
-    void emitAll();
+    void emitAll(const std::string& eventName, const Args& args);
 
     /**
      * Starts trying to reconnect if reconnection is enabled and we have not
@@ -215,12 +217,19 @@ private:
 
     void updateSocketIds();
 
-    std::unordered_map<std::string, SocketIOSocket*> _nsps;
-    std::vector<SocketIOSocket*> _connecting;
+    std::unordered_map<std::string, std::shared_ptr<SocketIOSocket>> _nsps;
+    std::vector<std::shared_ptr<SocketIOSocket>> _connecting;
     bool _autoConnect;
     std::vector<OnObj> _subs;
+    std::vector<Packet> _packetBuffer;
     bool _timeout;
     std::shared_ptr<EngineIOSocket> _engine;
     std::string _uri;
     bool _reconnecting;
+    bool _skipReconnect;
+    bool _encoding;
+    ReadyState _readyState;
+
+    std::unique_ptr<Encoder> _encoder;
+    std::unique_ptr<Decoder> _decoder;
 };

@@ -34,7 +34,7 @@ public:
 
     virtual bool write(const std::vector<Packet>& packets) override;
 
-    virtual const char* getTransportName() const override;
+    virtual const char* getName() const override;
     /**
      * Overloads onData to detect payloads.
      *

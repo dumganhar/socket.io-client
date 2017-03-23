@@ -6,7 +6,7 @@ public:
     WS(const Opts& opts);
     virtual ~WS();
 
-    virtual const char* getTransportName() const override;
+    virtual const char* getName() const override;
     virtual bool write(const std::vector<Packet>& packets) override;
     virtual void onClose() override;
     virtual bool doOpen() override;
@@ -22,4 +22,6 @@ private:
     void addEventListeners();
 
     WebSocket* _ws;
+
+    bool _supportsBinary;
 };

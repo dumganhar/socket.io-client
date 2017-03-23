@@ -15,7 +15,7 @@ SocketIOSocket* SocketIO::connect(const std::string& uri, const Opts& opts)
   bool foundIdInCache = __cache.find(id) != __cache.end();
   bool sameNamespace = foundIdInCache && __cache[id]._nsps.find(path) != __cache[id]._nsps.end();
   bool newConnection = opts.forceNew || opts['force new connection'] ||
-                      false === opts.multiplex || sameNamespace;
+                      false == opts.multiplex || sameNamespace;
 
   SocketIOManager* io = nullptr;
 
@@ -29,11 +29,12 @@ SocketIOSocket* SocketIO::connect(const std::string& uri, const Opts& opts)
     }
     io = __cache[id];
   }
-  //cjh if (parsed.query && !opts.query) {
-  //   opts.query = parsed.query;
-  // } else if (opts && 'object' === typeof opts.query) {
-  //   opts.query = encodeQueryString(opts.query);
-  // }
+
+  if (parsed.query && !opts.query) {
+    opts.query = parsed.query;
+  } else if (opts && 'object' == typeof opts.query) {
+    opts.query = encodeQueryString(opts.query);
+  }
   return io->createSocket(parsed.path, opts);
 }
 /**

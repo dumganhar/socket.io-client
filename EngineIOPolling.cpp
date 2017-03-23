@@ -6,7 +6,7 @@ Polling::Polling(const Opts& opts)
 
 }
 
-const char* Polling::getTransportName() const
+const char* Polling::getName() const
 {
   return "polling"
 }
@@ -74,12 +74,12 @@ void Polling::onData(const Data& data)
   debug('polling got data %s', data);
   var callback = function (packet, index, total) {
     // if its the first message we consider the transport open
-    if ('opening' === self.readyState) {
+    if ('opening' == self.readyState) {
       self.onOpen();
     }
 
     // if its a close packet, we close the ongoing requests
-    if ('close' === packet.type) {
+    if ("close" == packet.type) {
       self.onClose();
       return false;
     }
@@ -92,12 +92,12 @@ void Polling::onData(const Data& data)
   parser::decodePayload(data, this.socket.binaryType, callback);
 
   // if an event did not trigger closing
-  if ('closed' !== this.readyState) {
+  if ('closed' != this.readyState) {
     // if we got data we're not polling
     _polling = false;
     this.emit('pollComplete');
 
-    if ('open' === this.readyState) {
+    if ("open" == this.readyState) {
       poll();
     } else {
       debug('ignoring poll - transport state "%s"', this.readyState);
@@ -111,17 +111,17 @@ void Polling::doClose()
 
   function close () {
     debug('writing close packet');
-    self.write([{ type: 'close' }]);
+    self.write([{ type: "close" }]);
   }
 
-  if ('open' === this.readyState) {
+  if ("open" == this.readyState) {
     debug('transport open - closing');
     close();
   } else {
     // in case we're trying to close while
     // handshaking is in progress (GH-164)
     debug('transport not open - deferring close');
-    this.once('open', close);
+    this.once("open", close);
   }
 };
 
@@ -151,7 +151,7 @@ Polling.prototype.uri = function () {
   var port = '';
 
   // cache busting is forced
-  if (false !== this.timestampRequests) {
+  if (false != this.timestampRequests) {
     query[this.timestampParam] = yeast();
   }
 
@@ -162,8 +162,8 @@ Polling.prototype.uri = function () {
   query = parseqs.encode(query);
 
   // avoid port if default for schema
-  if (this.port && (('https' === schema && Number(this.port) !== 443) ||
-     ('http' === schema && Number(this.port) !== 80))) {
+  if (this.port && (('https' == schema && Number(this.port) != 443) ||
+     ('http' == schema && Number(this.port) != 80))) {
     port = ':' + this.port;
   }
 
@@ -172,6 +172,6 @@ Polling.prototype.uri = function () {
     query = '?' + query;
   }
 
-  var ipv6 = this.hostname.indexOf(':') !== -1;
+  var ipv6 = this.hostname.indexOf(':') != -1;
   return schema + '://' + (ipv6 ? '[' + this.hostname + ']' : this.hostname) + port + this.path + query;
 };
