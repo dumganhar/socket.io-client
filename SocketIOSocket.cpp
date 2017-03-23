@@ -42,9 +42,9 @@ void SocketIOSocket::subEvents()
 {
   if (_subs) return;
 
-  _subs.push_back(on(_io, "open", bind(this, 'onopen')));
-  _subs.push_back(on(_io, "packet", bind(this, 'onpacket')));
-  _subs.push_back(on(_io, "close", bind(this, 'onclose')));
+  _subs.push_back(on(_io, "open", std::bind(SocketIOSocket::onopen, this)));
+  _subs.push_back(on(_io, "packet", std::bind(SocketIOSocket::onpacket, this)));
+  _subs.push_back(on(_io, "close", std::bind(SocketIOSocket::onclose, this)));
 }
 
 // connect
@@ -84,9 +84,9 @@ void SocketIOSocket::emit(const std::string& eventName, const Args& args)
 
   // event ack callback
   if ('function' == typeof args[args.length - 1]) {
-    debug('emitting packet with ack id %d', this.ids);
-    _acks[this.ids] = args.pop();
-    packet.id = this.ids++;
+    debug('emitting packet with ack id %d', _ids);
+    _acks[_ids] = args.pop();
+    packet.id = _ids++;
   }
 
   if (_connected) {
@@ -155,7 +155,7 @@ void SocketIOSocket::onpacket(const Packet& packet)
       break;
 
     case parser.ERROR:
-      this.emit('error', packet.data);
+      this.emit("error", packet.data);
       break;
   }
 }
@@ -213,8 +213,8 @@ void SocketIOSocket::onconnect()
 {
   _connected = true;
   _disconnected = false;
-  this.emit("connect");
-  this.emitBuffered();
+  emit("connect");
+  emitBuffered();
 }
 
 void SocketIOSocket::emitBuffered()

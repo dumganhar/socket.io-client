@@ -105,3 +105,4 @@ struct OnObj
  */
 
 OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Args&)>& fn, int64_t key);
+OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Args&)>& fn);

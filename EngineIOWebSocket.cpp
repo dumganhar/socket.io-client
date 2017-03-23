@@ -66,7 +66,7 @@ void WS::doOpen()
   _ws = new WebSocket(uri, protocols, opts);
 
   if (_ws == nullptr) {
-    return this.emit('error', err);
+    return this.emit("error", err);
   }
 
   _supportsBinary = true;

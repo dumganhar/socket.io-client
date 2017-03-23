@@ -51,7 +51,7 @@ void Transport::onError(const std::string& msg, const std::string& desc)
   var err = new Error(msg);
   err.type = 'TransportError';
   err.description = desc;
-  emit('error', err);
+  emit("error", err);
 }
 
 /**

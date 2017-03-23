@@ -67,7 +67,7 @@ void XHR::doWrite(const Data& data, const std::function<void()>& fn)
   var req = request({ method: 'POST', data: data, isBinary: isBinary });
   var self = this;
   req.on('success', fn);
-  req.on('error', function (err) {
+  req.on("error", function (err) {
     self.onError('xhr post error', err);
   });
   this.sendXhr = req;
@@ -87,7 +87,7 @@ void XHR::doPoll()
   req.on('data', function (data) {
     self.onData(data);
   });
-  req.on('error', function (err) {
+  req.on("error", function (err) {
     self.onError('xhr poll error', err);
   });
   this.pollXhr = req;

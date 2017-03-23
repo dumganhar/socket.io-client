@@ -95,3 +95,9 @@ OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::functio
   };
   return onObj;
 }
+
+OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Args&)>& fn)
+{
+  int64_t key = grabListenerId();
+  return on(obj, ev, fn, key);
+}

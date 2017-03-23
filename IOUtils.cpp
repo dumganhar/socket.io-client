@@ -3,6 +3,18 @@
 ListenerId grabListenerId(ListenerId* id)
 {
     static ListenerId __id = 0;
-    *id = ++__id;
-    return *id;
+    ListenerId ret = ++__id;
+    if (id != nullptr)
+        *id = ret;
+    return ret;
+}
+
+TimerHandle setTimeout(const std::function<void()>& cb, long milliseconds)
+{
+    return 0;
+}
+
+void clearTimeout(TimerHandle)
+{
+
 }

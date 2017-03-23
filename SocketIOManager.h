@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Emitter.h"
+
 class SocketIOManager : public Emitter
 {
 public:
@@ -42,7 +44,8 @@ public:
      * @api public
      */
 
-    void reconnection(bool v);
+    void setAutoReconnect(bool autoReconnect);
+    bool isAutoReconnect() const;
 
     /**
      * Sets the reconnection attempts config.
@@ -52,7 +55,8 @@ public:
      * @api public
      */
 
-    void reconnectionAttempts(int v);
+    void setReconnectionAttempts(int v);
+    int getReconnectionAttempts() const;
 
     /**
      * Sets the delay between reconnections.
@@ -62,7 +66,11 @@ public:
      * @api public
      */
 
-    void reconnectionDelay(float v);
+    void setReconnectionDelay(long v);
+    long getReconnectionDelay() const;
+
+    void setRandomizationFactor(float v);
+    float getRandomizationFactor() const;
 
     /**
      * Sets the maximum delay between reconnections.
@@ -72,17 +80,18 @@ public:
      * @api public
      */
 
-    void reconnectionDelayMax(float v);
+    void setReconnectionDelayMax(long v);
+    long getReconnectionDelayMax() const;
 
     /**
-     * Sets the connection timeout. `false` to disable
+     * Sets the connection timeout. `0` to disable
      *
      * @return {Manager} self or value
      * @api public
      */
 
-    void enableTimeout(bool v);
-    bool isTimeoutEnabled() const;
+    void setTimeoutDelay(long v);
+    long getTimeoutDelay() const;
 
 private:
     /**
@@ -217,19 +226,30 @@ private:
 
     void updateSocketIds();
 
+//
+    Opts _opts;
     std::unordered_map<std::string, std::shared_ptr<SocketIOSocket>> _nsps;
     std::vector<std::shared_ptr<SocketIOSocket>> _connecting;
-    bool _autoConnect;
     std::vector<OnObj> _subs;
     std::vector<Packet> _packetBuffer;
-    bool _timeout;
     std::shared_ptr<EngineIOSocket> _engine;
     std::string _uri;
+
+    bool _autoConnect;
     bool _reconnecting;
     bool _skipReconnect;
     bool _encoding;
+    bool _reconnection;
+    long _timeout; // ms
+    int _reconnectionAttempts;
+    long _reconnectionDelay;
+    float _randomizationFactor;
+    long _reconnectionDelayMax;
+
     ReadyState _readyState;
 
     std::unique_ptr<Encoder> _encoder;
     std::unique_ptr<Decoder> _decoder;
+
+    std::unique_ptr<Backoff> _backoff;
 };

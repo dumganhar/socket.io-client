@@ -2,29 +2,25 @@
 
 SocketIOManager::SocketIOManager(const std::string& uri, const Opts& opts)
 {
-  if (!(this instanceof Manager)) return new Manager(uri, opts);
-  if (uri && ('object' == typeof uri)) {
-    opts = uri;
-    uri = undefined;
-  }
-  opts = opts || {};
+  _opts = opts;
+  if (_opts.path.empty())
+    _opts.path = "/socket.io";
 
-  opts.path = opts.path || '/socket.io';
   _nsps.clear();
   _subs.clear();
-  this.opts = opts;
-  this.reconnection(opts.reconnection != false);
-  this.reconnectionAttempts(opts.reconnectionAttempts || Infinity);
-  this.reconnectionDelay(opts.reconnectionDelay || 1000);
-  this.reconnectionDelayMax(opts.reconnectionDelayMax || 5000);
-  this.randomizationFactor(opts.randomizationFactor || 0.5);
-  this.backoff = new Backoff({
-    min: this.reconnectionDelay(),
-    max: this.reconnectionDelayMax(),
-    jitter: this.randomizationFactor()
-  });
-  this.timeout(null == opts.timeout ? 20000 : opts.timeout);
-  _readyState = 'closed';
+  
+  setAutoReconnect(opts.reconnection);
+  setReconnectionAttempts(opts.reconnectionAttempts);
+  setReconnectionDelay(opts.reconnectionDelay);
+  setReconnectionDelayMax(opts.reconnectionDelayMax);
+  setRandomizationFactor(opts.randomizationFactor);
+  _backoff = new Backoff(
+    /*min:*/ reconnectionDelay(),
+    /*max:*/ reconnectionDelayMax(),
+    /*jitter:*/ randomizationFactor()
+  );
+  setTimeoutDelay(opts.timeout);
+  _readyState = ReadyState::CLOSED;
   _uri = uri;
   _connecting.clear();
   this.lastPing = null;
@@ -51,51 +47,67 @@ void SocketIOManager::updateSocketIds()
   for (auto& nsp : _nsps) {
       nsp->setId(_engine->getId());
   }
-};
-
-
-void SocketIOManager::reconnection(v)
-{
-  if (!arguments.length) return this._reconnection;
-  this._reconnection = !!v;
-};
-
-void SocketIOManager::reconnectionAttempts(int v)
-{
-  if (!arguments.length) return this._reconnectionAttempts;
-  this._reconnectionAttempts = v;
-};
-
-void SocketIOManager::reconnectionDelay(float v)
-{
-  if (!arguments.length) return this._reconnectionDelay;
-  this._reconnectionDelay = v;
-  this.backoff && this.backoff.setMin(v);
-  return this;
 }
 
-Manager.prototype.randomizationFactor = function (v) {
-  if (!arguments.length) return this._randomizationFactor;
-  this._randomizationFactor = v;
-  this.backoff && this.backoff.setJitter(v);
-  return this;
-};
-
-void SocketIOManager::reconnectionDelayMax(float v)
+void SocketIOManager::setAutoReconnect(bool autoReconnect)
 {
-  if (!arguments.length) return this._reconnectionDelayMax;
-  this._reconnectionDelayMax = v;
-  this.backoff && this.backoff.setMax(v);
-  return this;
-};
-
-void SocketIOManager::enableTimeout(bool v)
-{
-  if (!arguments.length) return _timeout;
-  _timeout = v;
+    _reconnection = autoReconnect;
 }
 
-bool SocketIOManager::isTimeoutEnabled() const
+bool SocketIOManager::isAutoReconnect() const
+{
+  return _reconnection;
+}
+
+void SocketIOManager::setReconnectionAttempts(int v)
+{
+  _reconnectionAttempts = v;
+}
+
+int SocketIOManager::getReconnectionAttempts() const
+{
+  return _reconnectionAttempts;
+}
+
+void SocketIOManager::setReconnectionDelay(long v)
+{
+  _reconnectionDelay = v;
+  _backoff && _backoff->setMin(v);
+}
+
+long SocketIOManager::getReconnectionDelay() const
+{
+  return _reconnectionDelay;
+}
+
+void SocketIOManager::setRandomizationFactor(float v)
+{
+  _randomizationFactor = v;
+  _backoff && _backoff->setJitter(v);
+}
+
+long SocketIOManager::getRandomizationFactor() const
+{
+  return _randomizationFactor;
+}
+
+void SocketIOManager::setReconnectionDelayMax(long v)
+{
+  _reconnectionDelayMax = v;
+  _backoff && _backoff->setMax(v);
+}
+
+float getReconnectionDelayMax() const
+{
+  return _reconnectionDelayMax;
+}
+
+void SocketIOManager::setTimeoutDelay(long v)
+{
+    _timeout = v;
+}
+
+long SocketIOManager::getTimeoutDelay() const
 {
   return _timeout;
 }
@@ -103,9 +115,9 @@ bool SocketIOManager::isTimeoutEnabled() const
 void SocketIOManager::maybeReconnectOnOpen()
 {
   // Only try to reconnect if it's the first time we're connecting
-  if (!_reconnecting && this._reconnection && this.backoff.attempts == 0) {
+  if (!_reconnecting && this._reconnection && _backoff->attempts == 0) {
     // keeps reconnection from firing twice for the same reconnection loop
-    this.reconnect();
+    reconnect();
   }
 };
 
@@ -113,49 +125,49 @@ void SocketIOManager::maybeReconnectOnOpen()
 void SocketIOManager::connect(const std::function<void()>& fn, const Opts& opts)
 {
   debug('readyState %s', _readyState);
-  if (~_readyState.indexOf("open")) return this;
+  if (_readyState == ReadyState::OPEN)
+    return;
 
-  debug('opening %s', this.uri);
-  _engine = new EngineIOSocket(this.uri, this.opts);
-  var socket = _engine;
-  var self = this;
-  _readyState = 'opening';
+  debug('opening %s', _uri.c_str());
+  _engine = new EngineIOSocket(_uri, _opts);
+  auto socket = _engine;
+  _readyState = ReadyState::OPENING;
   _skipReconnect = false;
 
   // emit `open`
-  var openSub = on(socket, "open", function () {
-    self.onopen();
+  OnObj openSub = on(socket, "open", [this, fn]() {
+    onopen();
     fn && fn();
   });
 
   // emit `connect_error`
-  var errorSub = on(socket, 'error', function (data) {
+  OnObj errorSub = on(socket, "error", [this, fn](data) {
     debug('connect_error');
-    self.cleanup();
-    self.readyState = 'closed';
-    self.emitAll('connect_error', data);
+    cleanup();
+    _readyState = ReadyState::CLOSED;
+    emitAll('connect_error', data);
     if (fn) {
       var err = new Error('Connection error');
       err.data = data;
       fn(err);
     } else {
       // Only do this if there is no fn to handle the error
-      self.maybeReconnectOnOpen();
+      maybeReconnectOnOpen();
     }
   });
 
   // emit `connect_timeout`
   if (false != _timeout) {
-    var timeout = _timeout;
+    float timeout = _timeout;
     debug('connect attempt will timeout after %d', timeout);
 
     // set timer
-    var timer = setTimeout(function () {
+    var timer = setTimeout([this]() {
       debug('connect attempt timed out after %d', timeout);
       openSub.destroy();
-      socket.close();
-      socket.emit('error', 'timeout');
-      self.emitAll('connect_timeout', timeout);
+      socket->close();
+      socket->emit("error", 'timeout');
+      emitAll('connect_timeout', timeout);
     }, timeout);
 
     OnObj onObj;
@@ -179,7 +191,7 @@ void SocketIOManager::onopen()
   this.cleanup();
 
   // mark as open
-  _readyState = "open";
+  _readyState = ReadyState::OPEN;
   emit("open");
 
   // add new subs
@@ -215,8 +227,8 @@ void SocketIOManager::ondecoded(const Packet& packet)
 
 void SocketIOManager::onerror(const std::string& err)
 {
-  debug('error', err);
-  emitAll('error', err);
+  debug("error", err);
+  emitAll("error", err);
 };
 
 std::shared_ptr<SocketIOSocket> SocketIOManager::createSocket(const std::string& nsp, const Opts& opts)
@@ -234,7 +246,7 @@ std::shared_ptr<SocketIOSocket> SocketIOManager::createSocket(const std::string&
     };
 
     socket->on("connecting", onConnecting);
-    socket->on("connect", []() {
+    socket->on("connect", [=]() {
       socket->setId(_engine->getId());
     });
 
@@ -322,7 +334,7 @@ void SocketIOManager::disconnect()
     // an open event never happened
     cleanup();
   }
-  this.backoff.reset();
+  _backoff->reset();
   _readyState = ReadyState::CLOSED;
   if (_engine)
     _engine->close();
@@ -333,7 +345,7 @@ void SocketIOManager::onclose(const std::string& reason)
   debug('onclose');
 
   this.cleanup();
-  this.backoff.reset();
+  _backoff->reset();
   _readyState = ReadyState::CLOSED;
   emit("close", reason);
 
@@ -344,17 +356,16 @@ void SocketIOManager::onclose(const std::string& reason)
 
 void SocketIOManager::reconnect()
 {
-  if (_reconnecting || _skipReconnect) return this;
+  if (_reconnecting || _skipReconnect)
+    return this;
 
-  var self = this;
-
-  if (this.backoff.attempts >= this._reconnectionAttempts) {
+  if (_backoff->attempts >= this._reconnectionAttempts) {
     debug('reconnect failed');
-    this.backoff.reset();
+    _backoff->reset();
     emitAll('reconnect_failed');
     _reconnecting = false;
   } else {
-    var delay = this.backoff.duration();
+    var delay = _backoff->duration();
     debug('will wait %dms before reconnect attempt', delay);
 
     _reconnecting = true;
@@ -391,9 +402,9 @@ void SocketIOManager::reconnect()
 
 void SocketIOManager::onreconnect()
 {
-  var attempt = this.backoff.attempts;
+  int attempt = _backoff->attempts;
   _reconnecting = false;
-  this.backoff.reset();
-  this.updateSocketIds();
+  _backoff->reset();
+  updateSocketIds();
   emitAll('reconnect', attempt);
 };

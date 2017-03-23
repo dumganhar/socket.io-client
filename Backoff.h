@@ -16,7 +16,7 @@ public:
      * @api public
      */
 
-    Backoff(int min, int max, float jitter, int factor);
+    Backoff(long min, long max, float jitter, int factor);
 
     ~Backoff();
 
@@ -27,7 +27,7 @@ public:
      * @api public
      */
 
-    float getDuration();
+    long getDuration();
 
     /**
      * Reset the number of attempts.
@@ -43,7 +43,7 @@ public:
      * @api public
      */
 
-    void setMin(int min);
+    void setMin(long min);
 
     /**
      * Set the maximum duration
@@ -51,7 +51,7 @@ public:
      * @api public
      */
 
-    void setMax(int max);
+    void setMax(long max);
 
     /**
      * Set the jitter
@@ -62,8 +62,8 @@ public:
     void setJitter(float jitter);
 
 private:
-    int _ms;
-    int _max;
+    long _ms;
+    long _max;
     float _jitter;
     int _factor;
     int _attempts;

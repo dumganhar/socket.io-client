@@ -1,6 +1,6 @@
 
 
-Backoff::Backoff(int min, int max, float jitter, int factor)
+Backoff::Backoff(long min, long max, float jitter, int factor)
 {
   opts = opts || {};
   _ms = opts.min || 100;
@@ -15,7 +15,7 @@ Backoff::~Backoff()
 
 }
 
-float Backoff::getDuration()
+long Backoff::getDuration()
 {
   var ms = _ms * Math.pow(_factor, _attempts++);
   if (_jitter) {
@@ -31,12 +31,12 @@ void Backoff::reset()
   _attempts = 0;
 }
 
-void Backoff::setMin(int min)
+void Backoff::setMin(long min)
 {
   _ms = min;
 }
 
-void Backoff::setMax(int max)
+void Backoff::setMax(long max)
 {
   _max = max;
 }

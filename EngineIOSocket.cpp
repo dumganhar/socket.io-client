@@ -171,7 +171,7 @@ void EngineIOSocket::open()
   } else if (_transports.empty()) {
     // Emit error on next tick so it can be listened to
     setTimeout([this]() {
-      this->emit('error', 'No transports available');
+      this->emit("error", 'No transports available');
     }, 0);
     return;
   } else {
@@ -372,7 +372,7 @@ void EngineIOSocket::onPacket(const Packet& packet)
         this.emit('pong');
         break;
 
-      case 'error':
+      case "error":
         var err = new Error('server error');
         err.code = packet.data;
         this.onError(err);
@@ -543,7 +543,7 @@ void EngineIOSocket::onError(const std::string& err)
 {
   debug('socket error %j', err);
   __priorWebsocketSuccess = false;
-  emit('error', err);
+  emit("error", err);
   onClose('transport error', err);
 }
 
