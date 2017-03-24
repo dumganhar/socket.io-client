@@ -1,76 +1,177 @@
 #pragma once
 
-enum class PacketType
-{
-    /**
-     * Packet type `connect`.
-     */
-    CONNECT: 0,
-
-    /**
-     * Packet type `disconnect`.
-     */
-    DISCONNECT: 1,
-
-    /**
-     * Packet type `event`.
-     */
-    EVENT: 2,
-
-    /**
-     * Packet type `ack`.
-     */
-    ACK: 3,
-
-    /**
-     * Packet type `error`.
-     */
-    ERROR: 4,
-
-    /**
-     * Packet type 'binary event'
-     */
-    BINARY_EVENT: 5,
-
-    /**
-     * Packet type `binary ack`. For acks with binary arguments.
-     */
-    BINARY_ACK: 6
-};
-
-class Data
+class Buffer
 {
 public:
-    Data(uint8_t* data, size_t len);
-    Data(const char* str);
-    Data(const std::string& str);
-    Data(const Data& o);
-    Data(Data&& o);
+    Buffer();
+    Buffer(uint8_t* data, size_t len);
+    Buffer(const char* str);
+    Buffer(const std::string& str);
+    Buffer(const Buffer& o);
+    Buffer(Buffer&& o);
+    ~Buffer();
 
-    Data& operator=(const char* str);
-    Data& operator=(const std::string& str);
-    Data& operator=(const Data& o);
-    Data& operator=(Data&& o);
+    Buffer& operator=(const char* str);
+    Buffer& operator=(const std::string& str);
+    Buffer& operator=(const Buffer& o);
+    Buffer& operator=(Buffer&& o);
+    uint8_t operator[](int index);
 
+    bool isValid() const;
     const uint8_t* data() const;
-    size_t len() const;
+    size_t length() const;
     const char* c_str() const;
     bool isBinary() const;
 
 private:
-    uint8_t* data;
-    size_t len;
-    bool isBinary;
+    uint8_t* _data;
+    size_t _len;
+    bool _isBinary;
 };
 
-class Packet
+class Value;
+
+using Array = std::vector<Value>;
+using Object = std::unordered_map<std::string, Value>;
+
+class Value
 {
 public:
-    std::string id;
-    std::string nsp;
-    PacketType type;
-    std::string query;
-    Data data;
+    enum class Type
+    {
+        BUFFER,
+        INTEGER,
+        FLOAT,
+        ARRAY,
+        OBJECT
+    };
+
+    Type getType() const;
+
+    Value();
+    Value(const Value& o);
+    Value(const Buffer& buf);
+    Value(int intVal);
+    Value(float floatVal);
+    Value(const Array& arrVal);
+    Value(const Object& objVal);
+    ~Value();
+
+    Value& operator=(const Value& o);
+    Value& operator=(const Buffer& buf);
+    Value& operator=(int intVal);
+    Value& operator=(float floatVal);
+    Value& operator=(const Array& arrVal);
+    Value& operator=(const Object& objVal);
+
+    const Buffer& asBuffer() const;
+    int asInt() const;
+    float asFloat() const;
+    const Array& asArray() const;
+    const Object& asObject() const;
+
+private:
+    union {
+        Buffer* bufVal;
+        int intVal;
+        float floatVal;
+        Array* arrVal;
+        Object* objVal;
+    } _u;
+
+    Type _type;
+};
+
+using Values = std::vector<Value>;
+using Args = Values;
+
+class EngineIOPacket
+{
+public:
+    static EngineIOPacket ERROR;
+private:
+    std::string _type;
+};
+
+class SocketIOPacket
+{
+public:
+    static SocketIOPacket ERROR;
+
+    enum class Type
+    {
+        /**
+         * Packet type `connect`.
+         */
+        CONNECT: 0,
+
+        /**
+         * Packet type `disconnect`.
+         */
+        DISCONNECT: 1,
+
+        /**
+         * Packet type `event`.
+         */
+        EVENT: 2,
+
+        /**
+         * Packet type `ack`.
+         */
+        ACK: 3,
+
+        /**
+         * Packet type `error`.
+         */
+        ERROR: 4,
+
+        /**
+         * Packet type 'binary event'
+         */
+        BINARY_EVENT: 5,
+
+        /**
+         * Packet type `binary ack`. For acks with binary arguments.
+         */
+        BINARY_ACK: 6
+    };
+
+    SocketIOPacket();
+    SocketIOPacket(const SocketIOPacket& packet);
+    SocketIOPacket(SocketIOPacket&& packet);
+    ~SocketIOPacket();
+
+    SocketIOPacket& operator=(const SocketIOPacket& packet);
+    SocketIOPacket& operator=(SocketIOPacket&& packet);
+
+    bool isValid() const;
+    void reset();
+
+    void setId(const std::string& id);
+    const std::string& getId() const;
+
+    void setNsp(const std::string& nsp);
+    const std::string& getNsp() const;
+
+    void setType(PacketType type);
+    PacketType getType() const;
+
+    void setQuery(const std::string& query);
+    const std::string& getQuery() const;
+
+    void setData(const Values& data);
+    void setData(Values&& data);
+    const Values& getData() const;
+
+    int getAttachments() const;
+
+private:
+    int _id;
+    std::string _nsp;
+    Type _type;
+    std::string _query;
+    int _attachments;  // -1 means not useful
+    Values _data;
 };
 
 
@@ -97,4 +198,7 @@ struct Opts
     int timeout;// (Number) connection timeout before a connect_error and connect_timeout events are emitted (20000)
     bool autoConnect;// (Boolean) by setting this false, you have to call manager.open whenever you decide it's appropriate
 };
+
+
+
 

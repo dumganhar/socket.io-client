@@ -68,7 +68,7 @@ private:
      * @api private
      */
 
-    void sendPacket(const Packet& packet);
+    void sendPacket(const SocketIOPacket& packet);
 
     /**
      * Called upon engine `open`.
@@ -93,7 +93,7 @@ private:
      * @api private
      */
 
-    void onpacket(const Packet& packet);
+    void onpacket(const SocketIOPacket& packet);
 
     /**
      * Called upon a server event.
@@ -102,15 +102,16 @@ private:
      * @api private
      */
 
-    void onevent(const Packet& packet);
+    void onevent(const SocketIOPacket& packet);
 
+    using AckCallback = std::function<void(const Data&)>;
     /**
      * Produces an ack callback to emit with an event.
      *
      * @api private
      */
 
-    void ack(int id);
+    AckCallback ack(int id);
 
     /**
      * Called upon a server acknowlegement.
@@ -119,7 +120,7 @@ private:
      * @api private
      */
 
-    void onack(const Packet& packet);
+    void onack(const SocketIOPacket& packet);
 
     /**
      * Called upon server connect.
@@ -157,15 +158,15 @@ private:
 
     void setId(const std::string& id) { _id = id; }
 
-
-    SocketIOManager* _io;
+private:
+    std::shared_ptr<SocketIOManager> _io;
     std::string _nsp;
     std::string _query;
     std::string _id; // An unique identifier for the socket session. Set after the connect event is triggered, and updated after the reconnect event.
     int _ids;
-    std::unordered_map<int, std::function<void(SocketIOSocket*, const Packet&)>> _acks;
-    std::vector<Data> _receiveBuffer;
-    std::vector<Packet> _sendBuffer;
+    std::unordered_map<int, AckCallback> _acks;
+    std::vector<Args> _receiveBuffer;
+    std::vector<SocketIOPacket> _sendBuffer;
     std::vector<OnObj> _subs;
     bool _connected;
     bool _disconnected;

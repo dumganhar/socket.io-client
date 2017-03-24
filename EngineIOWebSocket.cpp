@@ -101,7 +101,7 @@ bool WS::write(const std::vector<Packet>& packets)
   var total = packets.length;
   for (var i = 0, l = total; i < l; i++) {
     (function (packet) {
-      parser.encodePacket(packet, _supportsBinary, function (data) {
+      parser.encodePacket(packet, _supportsBinary, [](Data& data) {
         if (!self.usingBrowserWebSocket) {
           // always create a new object (GH-437)
           var opts = {};
@@ -123,9 +123,9 @@ bool WS::write(const std::vector<Packet>& packets)
         try {
           if (self.usingBrowserWebSocket) {
             // TypeError is thrown when passing the second argument on Safari
-            self.ws.send(data);
+            _ws->send(data);
           } else {
-            self.ws.send(data, opts);
+            _ws->send(data, opts);
           }
         } catch (e) {
           debug('websocket closed before onclose event');

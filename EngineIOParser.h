@@ -39,4 +39,33 @@ Data encodePacket(const Packet& packet, bool supportsBinary, bool utf8encode);
 
 Packet decodePacket(const Data& data, bool binaryType, bool utf8decode);
 
+
+/**
+ * Encodes multiple messages (payload).
+ *
+ *     <length>:data
+ *
+ * Example:
+ *
+ *     11:hello world2:hi
+ *
+ * If any contents are binary, they will be encoded as base64 strings. Base64
+ * encoded strings are marked with a b before the length specifier
+ *
+ * @param {Array} packets
+ * @api private
+ */
+
+Data encodePayload(const Packet& packet, bool supportsBinary);
+
+/*
+ * Decodes data when a payload is maybe expected. Possible binary contents are
+ * decoded from their base64 representation
+ *
+ * @param {String} data, callback method
+ * @api public
+ */
+
+Packet decodePayload(const Data& data, bool binaryType);
+
 }} //namespace socketio { namespace parser {

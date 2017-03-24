@@ -26,52 +26,60 @@ static std::vector<std::string> __types = {
   "BINARY_ACK"
 };
 
+Encoder::Encoder()
+{
 
+}
 
-Encoder.prototype.encode = function(obj, callback){
+Encoder::~Encoder()
+{
+
+}
+
+Data Encoder::encode(const SocketIOPacket& obj)
+{
   debug('encoding packet %j', obj);
 
-  if (PacketType::BINARY_EVENT == obj.type || PacketType::BINARY_ACK == obj.type) {
-    encodeAsBinary(obj, callback);
+  if (SocketIOPacket::Type::BINARY_EVENT == obj.type || SocketIOPacket::Type::BINARY_ACK == obj.type) {
+    return encodeAsBinary(obj);
   }
   else {
-    std::string encoding = encodeAsString(obj);
-    callback([encoding]);
+    return encodeAsString(obj);
   }
 }
 
-std::string Encoder::encodeAsString(const Packet& obj)
+std::string Encoder::encodeAsString(const SocketIOPacket& obj)
 {
   std::string str = "";
   bool nsp = false;
 
   // first is type
-  str += obj.type;
+  str += obj.getType();
 
   // attachments if we have them
-  if (PacketType::BINARY_EVENT == obj.type || PacketType::BINARY_ACK == obj.type) {
-    str += obj.attachments;
+  if (SocketIOPacket::Type::BINARY_EVENT == obj.type || SocketIOPacket::Type::BINARY_ACK == obj.type) {
+    str += obj.getAttachments();
     str += '-';
   }
 
   // if we have a namespace other than `/`
   // we append it followed by a comma `,`
-  if (!obj.nsp.empty() && "/" != obj.nsp) {
+  if (!obj.getNsp().empty() && "/" != obj.getNsp()) {
     nsp = true;
-    str += obj.nsp;
+    str += obj.getNsp();
   }
 
   // immediately followed by the id
-  if (!obj.id.empty()) {
+  if (!obj.getId().empty()) {
     if (nsp) {
       str += ",";
       nsp = false;
     }
-    str += obj.id;
+    str += obj.getId();
   }
 
   // json data
-  if (null != obj.data) {
+  if (obj.getData().isValid()) {
     if (nsp) str += ",";
     str += json.stringify(obj.data);
   }
@@ -80,18 +88,8 @@ std::string Encoder::encodeAsString(const Packet& obj)
   return str;
 }
 
-/**
- * Encode packet as 'buffer sequence' by removing blobs, and
- * deconstructing packet into object with placeholders and
- * a list of buffers.
- *
- * @param {Object} packet
- * @return {Buffer} encoded
- * @api private
- */
-
-function encodeAsBinary(obj, callback) {
-
+Data Encoder::encodeAsBinary(const SocketIOPacket& obj)
+{
   function writeEncoding(bloblessData) {
     var deconstruction = binary.deconstructPacket(bloblessData);
     std::string pack = encodeAsString(deconstruction.packet);
@@ -104,18 +102,75 @@ function encodeAsBinary(obj, callback) {
   binary.removeBlobs(obj, writeEncoding);
 }
 
+
+//
+
 /**
- * A socket.io Decoder instance
+ * A manager of a binary event's 'buffer sequence'. Should
+ * be constructed whenever a packet of type BINARY_EVENT is
+ * decoded.
  *
- * @return {Object} decoder
- * @api public
+ * @param {Object} packet
+ * @return {BinaryReconstructor} initialized reconstructor
+ * @api private
  */
 
-function Decoder() {
-  this.reconstructor = null;
+class BinaryReconstructor
+{
+public:
+  BinaryReconstructor(const SocketIOPacket& packet);
+
+  /**
+   * Method to be called when binary data received from connection
+   * after a BINARY_EVENT packet.
+   *
+   * @param {Buffer | ArrayBuffer} binData - the raw binary data received
+   * @return {null | Object} returns null if more binary data is expected or
+   *   a reconstructed packet object if all buffers have been received.
+   * @api private
+   */
+
+  SocketIOPacket takeBinaryData(const Data& binData);
+
+  /**
+   * Cleans up binary packet reconstruction variables.
+   *
+   * @api private
+   */
+
+  void finishedReconstruction();
+
+private:
+  SocketIOPacket _reconPack;
+  std::vector<Data> _buffers;
+};
+
+BinaryReconstructor::BinaryReconstructor(const SocketIOPacket& packet)
+: _reconPack(packet)
+{
 }
 
+SocketIOPacket BinaryReconstructor::takeBinaryData(const Data& binData)
+{
+  SocketIOPacket packet;
+  _buffers.push_back(binData);
+  if (_buffers.size() == _reconPack.getAttachments()) { // done with buffer list
+    packet = binary.reconstructPacket(_reconPack, _buffers);
+    finishedReconstruction();
+  }
+  return packet;
+}
+
+void BinaryReconstructor::finishedReconstruction()
+{
+  _reconPack.reset();
+  _buffers.clear();
+}
+
+//
+
 Decoder::Decoder()
+: _reconstructor(nullptr)
 {
 
 }
@@ -157,9 +212,9 @@ void Decoder::add(const Data& obj)
   }
 };
 
-bool Decoder::decodeString(const std::string& str, Packet* packet)
+SocketIOPacket Decoder::decodeString(const std::string& str)
 {
-  Packet& p = *packet;
+  SocketIOPacket p;
   size_t i = 0;
 
   // look up type
@@ -169,7 +224,7 @@ bool Decoder::decodeString(const std::string& str, Packet* packet)
     return false;
 
   // look up attachments if type binary
-  if (PacketType::BINARY_EVENT == p.type || PacketType::BINARY_ACK == p.type) {
+  if (SocketIOPacket::Type::BINARY_EVENT == p.type || SocketIOPacket::Type::BINARY_ACK == p.type) {
     var buf = '';
     while (str.charAt(++i) != '-') {
       buf += str.charAt(i);
@@ -235,51 +290,7 @@ void Decoder::destroy()
   }
 };
 
-/**
- * A manager of a binary event's 'buffer sequence'. Should
- * be constructed whenever a packet of type BINARY_EVENT is
- * decoded.
- *
- * @param {Object} packet
- * @return {BinaryReconstructor} initialized reconstructor
- * @api private
- */
 
-function BinaryReconstructor(packet) {
-  this.reconPack = packet;
-  this.buffers = [];
-}
-
-/**
- * Method to be called when binary data received from connection
- * after a BINARY_EVENT packet.
- *
- * @param {Buffer | ArrayBuffer} binData - the raw binary data received
- * @return {null | Object} returns null if more binary data is expected or
- *   a reconstructed packet object if all buffers have been received.
- * @api private
- */
-
-BinaryReconstructor.prototype.takeBinaryData = function(binData) {
-  this.buffers.push(binData);
-  if (this.buffers.length == this.reconPack.attachments) { // done with buffer list
-    var packet = binary.reconstructPacket(this.reconPack, this.buffers);
-    this.finishedReconstruction();
-    return packet;
-  }
-  return null;
-};
-
-/**
- * Cleans up binary packet reconstruction variables.
- *
- * @api private
- */
-
-BinaryReconstructor.prototype.finishedReconstruction = function() {
-  this.reconPack = null;
-  this.buffers = [];
-};
 
 function error(data){
   return {

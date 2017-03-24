@@ -8,3 +8,5 @@ using TimerHandle = uint64_t;
 
 TimerHandle setTimeout(const std::function<void()>& cb, long milliseconds);
 void clearTimeout(TimerHandle);
+
+bool hasBin(const Args& args);

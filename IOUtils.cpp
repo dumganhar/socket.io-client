@@ -18,3 +18,8 @@ void clearTimeout(TimerHandle)
 {
 
 }
+
+bool hasBin(const Args& args)
+{
+    return false;
+}

@@ -72,12 +72,11 @@ void SocketIOSocket::emit(const std::string& eventName, const Args& args)
     return;
   }
 
-  var args = toArray(arguments);
-  PacketType parserType = PacketType::EVENT; // default
+  SocketIOPacket::Type parserType = SocketIOPacket::Type::EVENT; // default
   if (hasBin(args)) { 
-    parserType = PacketType::BINARY_EVENT;
+    parserType = SocketIOPacket::Type::BINARY_EVENT;
   } // binary
-  Packet packet;
+  SocketIOPacket packet;
   packet.type = parserType;
   packet.data = args;
 
@@ -87,7 +86,7 @@ void SocketIOSocket::emit(const std::string& eventName, const Args& args)
   // event ack callback
   if ('function' == typeof args[args.length - 1]) {
     debug('emitting packet with ack id %d', _ids);
-    _acks[_ids] = args.pop();
+    _acks[_ids] = args.pop_back();
     packet.id = _ids++;
   }
 
@@ -98,9 +97,9 @@ void SocketIOSocket::emit(const std::string& eventName, const Args& args)
   }
 }
 
-void SocketIOSocket::sendPacket(const Packet& packet)
+void SocketIOSocket::sendPacket(const SocketIOPacket& packet)
 {
-  packet.nsp = _nsp;
+  const_cast<SocketIOPacket&>(packet).setNsp(_nsp);
   _io->sendPacket(packet);
 }
 
@@ -110,10 +109,14 @@ void SocketIOSocket::onopen()
 
   // write connect packet if necessary
   if ("/" != _nsp) {
+    SocketIOPacket packet;
+    packet.setType(SocketIOPacket::Type::CONNECT);
+
     if (!_query.empty()) {
-      sendPacket({type: PacketType::CONNECT, query: _query});
+      packet.setQuery(_query);
+      sendPacket(packet);
     } else {
-      sendPacket({type: PacketType::CONNECT});
+      sendPacket(packet);
     }
   }
 }
@@ -127,84 +130,85 @@ void SocketIOSocket::onclose(const std::string& reason)
   emit('disconnect', reason);
 }
 
-void SocketIOSocket::onpacket(const Packet& packet)
+void SocketIOSocket::onpacket(const SocketIOPacket& packet)
 {
-  if (packet.nsp != _nsp) return;
+  if (packet.getNsp() != _nsp) return;
 
-  switch (packet.type) {
-    case PacketType::CONNECT:
+  switch (packet.getType()) {
+    case SocketIOPacket::Type::CONNECT:
       onconnect();
       break;
 
-    case PacketType::EVENT:
+    case SocketIOPacket::Type::EVENT:
       onevent(packet);
       break;
 
-    case PacketType::BINARY_EVENT:
+    case SocketIOPacket::Type::BINARY_EVENT:
       onevent(packet);
       break;
 
-    case PacketType::ACK:
+    case SocketIOPacket::Type::ACK:
       onack(packet);
       break;
 
-    case PacketType::BINARY_ACK:
+    case SocketIOPacket::Type::BINARY_ACK:
       onack(packet);
       break;
 
-    case PacketType::DISCONNECT:
+    case SocketIOPacket::Type::DISCONNECT:
       ondisconnect();
       break;
 
-    case PacketType::ERROR:
+    case SocketIOPacket::Type::ERROR:
       emit("error", packet.data);
       break;
   }
 }
 
-void SocketIOSocket::onevent(const Packet& packet)
+void SocketIOSocket::onevent(const SocketIOPacket& packet)
 {
   var args = packet.data || [];
   debug('emitting event %j', args);
 
-  if (null != packet.id) {
+  if (packet.getId() != -1) {
     debug('attaching ack callback to event');
-    args.push(ack(packet.id));
+    args.push_back(ack(packet.getId()));
   }
 
   if (_connected) {
-    emit.apply(this, args);
+    emit(args);
   } else {
     _receiveBuffer.push_back(args);
   }
 }
 
-void SocketIOSocket::ack(int id)
+AckCallback SocketIOSocket::ack(int id)
 {
   std::shared_ptr<bool> sent = std::make_shared<bool>(false);
-  return [this, sent]() {
+  return [this, sent](const Data& data) {
     // prevent double callbacks
     if (*sent) return;
     *sent = true;
-    var args = toArray(arguments);
-    debug('sending ack %j', args);
+    debug('sending ack %j', data);
 
-    var type = hasBin(args) ? PacketType::BINARY_ACK : PacketType::ACK;
-    sendPacket({
-      type: type,
-      id: id,
-      data: args
-    });
+    SocketIOPacket::Type type = hasBin(data) ? SocketIOPacket::Type::BINARY_ACK : SocketIOPacket::Type::ACK;
+
+    SocketIOPacket packet;
+    packet.type = type;
+    packet.id = id;
+    packet.data = data
+
+    sendPacket(packet);
   };
 }
 
-void SocketIOSocket::onack(const Packet& packet)
+void SocketIOSocket::onack(const SocketIOPacket& packet)
 {
-  var ack = _acks[packet.id];
-  if ('function' == typeof ack) {
+  auto iter = _acks.find(packet.getId());
+  if (iter != _acks.end()) {
     debug('calling ack %s with %j', packet.id, packet.data);
-    ack.apply(this, packet.data);
-    delete _acks[packet.id];
+    iter->second(packet.data);
+    _acks.erase(packet.getId());
   } else {
     debug('bad ack %s', packet.id);
   }
@@ -222,12 +226,9 @@ void SocketIOSocket::emitBuffered()
 {
   for (auto& receivedBuf : _receiveBuffer)
   {
+      emit(receivedBuf);
+  }
 
-  }
-  size_t i;
-  for (i = 0; i < _receiveBuffer.size(); i++) {
-    emit.apply(this, _receiveBuffer[i]);
-  }
   _receiveBuffer.clear();
 
   for (i = 0; i < _sendBuffer.length; i++) {
@@ -261,7 +262,7 @@ void SocketIOSocket::close()
 {
   if (_connected) {
     debug('performing disconnect (%s)', _nsp);
-    sendPacket({ type: PacketType::DISCONNECT });
+    sendPacket({ type: SocketIOPacket::Type::DISCONNECT });
   }
 
   // remove socket from pool

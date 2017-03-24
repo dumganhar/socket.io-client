@@ -7,6 +7,9 @@ extern uint8_t protocol;
 class Encoder
 {
 public:
+    Encoder();
+    ~Encoder();
+
     /**
      * Encode a packet as a single string if non-binary, or as a
      * buffer sequence, depending on packet type.
@@ -16,7 +19,7 @@ public:
      * @return Calls callback with Array of encodings
      * @api public
      */
-    std::string encode(const Packet& obj);
+    Data encode(const SocketIOPacket& obj);
 
 private:
 
@@ -28,7 +31,7 @@ private:
      * @api private
      */
 
-    std::string encodeAsString(const Packet& obj);
+    std::string encodeAsString(const SocketIOPacket& obj);
 
     /**
      * Encode packet as 'buffer sequence' by removing blobs, and
@@ -40,14 +43,14 @@ private:
      * @api private
      */
 
-    Data encodeAsBinary(const Packet& obj);
+    Data encodeAsBinary(const SocketIOPacket& obj);
 };
 
 class Decoder : public Emitter
 {
 public:
     Decoder();
-    virtual ~Decoder();
+    ~Decoder();
 
     /**
      * Decodes an ecoded packet string into packet JSON.

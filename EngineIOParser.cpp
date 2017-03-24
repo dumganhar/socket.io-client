@@ -18,7 +18,7 @@ static std::unordered_map<std::string, uint8_t> __packets = {
  * Packet types.
  */
 
-static const char* __packetslist = {
+static const std::vector<std::string> __packetslist = {
   "open",
   "close"
   "ping",
@@ -64,7 +64,7 @@ static Data encodeBuffer(const Packet& packet, bool supportsBinary)
   }
 
   var typeBuffer = new Buffer(1);
-  typeBuffer[0] = packets[packet.type];
+  typeBuffer[0] = __packets[packet.type];
   return callback(Buffer.concat([typeBuffer, data]));
 }
 
@@ -74,7 +74,6 @@ Data encodePacket(const Packet& packet, bool supportsBinary, bool utf8encode)
     return encodeBuffer(packet, supportsBinary);
   }
 
-  Data data;
   // encode string
   std::stringstream encoded;
   // Sending data as a utf-8 string
@@ -97,24 +96,40 @@ Data encodePacket(const Packet& packet, bool supportsBinary, bool utf8encode)
   }
 
   return encoded.str();
-};
+}
 
+/**
+ * Decodes a packet encoded in a base64 string.
+ *
+ * @param {String} base64 encoded message
+ * @return {Object} with `type` and `data` (if any)
+ */
 
-
-
+static Packet decodeBase64Packet(const std::string& msg) {
+  var type = __packetslist[msg.charAt(0)];
+  var data = new Buffer(msg.substr(1), 'base64');
+  if (binaryType == 'arraybuffer') {
+    var abv = new Uint8Array(data.length);
+    for (var i = 0; i < abv.length; i++){
+      abv[i] = data[i];
+    }
+    data = abv.buffer;
+  }
+  return { type: type, data: data };
+}
 
 Packet decodePacket(const Data& data, bool binaryType, bool utf8decode)
 {
-  if (data == undefined) {
+  if (!data.isValid()) {
     return err;
   }
   // String data
-  if (typeof data == 'string') {
+  if (!data.isBinary()) {
     if (data.charAt(0) == 'b') {
-      return exports.decodeBase64Packet(data.substr(1), binaryType);
+      return decodeBase64Packet(data.substr(1), binaryType);
     }
 
-    var type = data.charAt(0);
+    uint8_t type = data.charAt(0);
 
     if (utf8decode) {
       data = tryDecode(data);
@@ -123,31 +138,21 @@ Packet decodePacket(const Data& data, bool binaryType, bool utf8decode)
       }
     }
 
-    if (Number(type) != type || !packetslist[type]) {
+    if (Number(type) != type || !__packetslist[type]) {
       return err;
     }
 
     if (data.length > 1) {
-      return { type: packetslist[type], data: data.substring(1) };
+      return { type: __packetslist[type], data: data.substring(1) };
     } else {
-      return { type: packetslist[type] };
+      return { type: __packetslist[type] };
     }
-  }
+  } else {
 
-  // Binary data
-  if (binaryType == 'arraybuffer') {
-    // wrap Buffer/ArrayBuffer data into an Uint8Array
-    var intArray = new Uint8Array(data);
-    var type = intArray[0];
-    return { type: packetslist[type], data: intArray.buffer.slice(1) };
-  }
-
-  if (data instanceof ArrayBuffer) {
-    data = arrayBufferToBuffer(data);
-  }
-  var type = data[0];
-  return { type: packetslist[type], data: data.slice(1) };
-};
+    // Binary data
+    var type = data[0];
+    return { type: __packetslist[type], data: data.slice(1) };
+}
 
 function tryDecode(data) {
   try {
@@ -159,47 +164,57 @@ function tryDecode(data) {
 }
 
 /**
- * Decodes a packet encoded in a base64 string.
+ * Encodes multiple messages (payload) as binary.
  *
- * @param {String} base64 encoded message
- * @return {Object} with `type` and `data` (if any)
- */
-
-exports.decodeBase64Packet = function(msg, binaryType) {
-  var type = packetslist[msg.charAt(0)];
-  var data = new Buffer(msg.substr(1), 'base64');
-  if (binaryType == 'arraybuffer') {
-    var abv = new Uint8Array(data.length);
-    for (var i = 0; i < abv.length; i++){
-      abv[i] = data[i];
-    }
-    data = abv.buffer;
-  }
-  return { type: type, data: data };
-};
-
-/**
- * Encodes multiple messages (payload).
- *
- *     <length>:data
+ * <1 = binary, 0 = string><number from 0-9><number from 0-9>[...]<number
+ * 255><data>
  *
  * Example:
- *
- *     11:hello world2:hi
- *
- * If any contents are binary, they will be encoded as base64 strings. Base64
- * encoded strings are marked with a b before the length specifier
+ * 1 3 255 1 2 3, if the binary contents are interpreted as 8 bit integers
  *
  * @param {Array} packets
+ * @return {Buffer} encoded payload
  * @api private
  */
 
-exports.encodePayload = function (packets, supportsBinary, callback) {
-  if (typeof supportsBinary == 'function') {
-    callback = supportsBinary;
-    supportsBinary = null;
+static Data encodePayloadAsBinary(const Packet& packets)
+{
+  if (!packets.length) {
+    return callback(new Buffer(0));
   }
 
+  function encodeOne(p, doneCallback) {
+    encodePacket(p, true, true, function(packet) {
+
+      if (typeof packet == 'string') {
+        var encodingLength = '' + packet.length;
+        var sizeBuffer = new Buffer(encodingLength.length + 2);
+        sizeBuffer[0] = 0; // is a string (not true binary = 0)
+        for (var i = 0; i < encodingLength.length; i++) {
+          sizeBuffer[i + 1] = parseInt(encodingLength[i], 10);
+        }
+        sizeBuffer[sizeBuffer.length - 1] = 255;
+        return doneCallback(null, Buffer.concat([sizeBuffer, stringToBuffer(packet)]));
+      }
+
+      var encodingLength = '' + packet.length;
+      var sizeBuffer = new Buffer(encodingLength.length + 2);
+      sizeBuffer[0] = 1; // is binary (true binary = 1)
+      for (var i = 0; i < encodingLength.length; i++) {
+        sizeBuffer[i + 1] = parseInt(encodingLength[i], 10);
+      }
+      sizeBuffer[sizeBuffer.length - 1] = 255;
+      doneCallback(null, Buffer.concat([sizeBuffer, packet]));
+    });
+  }
+
+  map(packets, encodeOne, function(err, results) {
+    return callback(Buffer.concat(results));
+  });
+}
+
+Data encodePayload(const Packet& packet, bool supportsBinary)
+{
   if (supportsBinary) {
     return exports.encodePayloadAsBinary(packets, callback);
   }
@@ -221,7 +236,7 @@ exports.encodePayload = function (packets, supportsBinary, callback) {
   map(packets, encodeOne, function(err, results) {
     return callback(results.join(''));
   });
-};
+}
 
 /**
  * Async array map using after
@@ -244,6 +259,50 @@ function map(ary, each, done) {
 }
 
 /*
+ * Decodes data when a payload is maybe expected. Strings are decoded by
+ * interpreting each byte as a key code for entries marked to start with 0. See
+ * description of encodePayloadAsBinary
+
+ * @param {Buffer} data, callback method
+ * @api public
+ */
+
+static Packet decodePayloadAsBinary(const Data& data, bool binaryType)
+{
+  var bufferTail = data;
+  var buffers = [];
+
+  while (bufferTail.length > 0) {
+    var strLen = '';
+    var isString = bufferTail[0] == 0;
+    var numberTooLong = false;
+    for (var i = 1; ; i++) {
+      if (bufferTail[i] == 255)  break;
+      // 310 = char length of Number.MAX_VALUE
+      if (strLen.length > 310) {
+        numberTooLong = true;
+        break;
+      }
+      strLen += '' + bufferTail[i];
+    }
+    if(numberTooLong) return callback(err, 0, 1);
+    bufferTail = bufferTail.slice(strLen.length + 1);
+
+    var msgLength = parseInt(strLen, 10);
+
+    var msg = bufferTail.slice(1, msgLength + 1);
+    if (isString) msg = bufferToString(msg);
+    buffers.push(msg);
+    bufferTail = bufferTail.slice(msgLength + 1);
+  }
+
+  var total = buffers.length;
+  buffers.forEach(function(buffer, i) {
+    callback(decodePacket(buffer, binaryType, true), i, total);
+  });
+}
+
+/*
  * Decodes data when a payload is maybe expected. Possible binary contents are
  * decoded from their base64 representation
  *
@@ -251,7 +310,8 @@ function map(ary, each, done) {
  * @api public
  */
 
-exports.decodePayload = function (data, binaryType, callback) {
+Packet decodePayload(const Data& data, bool binaryType)
+{
   if ('string' != typeof data) {
     return exports.decodePayloadAsBinary(data, binaryType, callback);
   }
@@ -311,7 +371,7 @@ exports.decodePayload = function (data, binaryType, callback) {
     return callback(err, 0, 1);
   }
 
-};
+}
 
 /**
  *
@@ -362,103 +422,6 @@ function arrayBufferToBuffer(data) {
   }
   return buffer;
 }
-
-/**
- * Encodes multiple messages (payload) as binary.
- *
- * <1 = binary, 0 = string><number from 0-9><number from 0-9>[...]<number
- * 255><data>
- *
- * Example:
- * 1 3 255 1 2 3, if the binary contents are interpreted as 8 bit integers
- *
- * @param {Array} packets
- * @return {Buffer} encoded payload
- * @api private
- */
-
-exports.encodePayloadAsBinary = function (packets, callback) {
-  if (!packets.length) {
-    return callback(new Buffer(0));
-  }
-
-  function encodeOne(p, doneCallback) {
-    exports.encodePacket(p, true, true, function(packet) {
-
-      if (typeof packet == 'string') {
-        var encodingLength = '' + packet.length;
-        var sizeBuffer = new Buffer(encodingLength.length + 2);
-        sizeBuffer[0] = 0; // is a string (not true binary = 0)
-        for (var i = 0; i < encodingLength.length; i++) {
-          sizeBuffer[i + 1] = parseInt(encodingLength[i], 10);
-        }
-        sizeBuffer[sizeBuffer.length - 1] = 255;
-        return doneCallback(null, Buffer.concat([sizeBuffer, stringToBuffer(packet)]));
-      }
-
-      var encodingLength = '' + packet.length;
-      var sizeBuffer = new Buffer(encodingLength.length + 2);
-      sizeBuffer[0] = 1; // is binary (true binary = 1)
-      for (var i = 0; i < encodingLength.length; i++) {
-        sizeBuffer[i + 1] = parseInt(encodingLength[i], 10);
-      }
-      sizeBuffer[sizeBuffer.length - 1] = 255;
-      doneCallback(null, Buffer.concat([sizeBuffer, packet]));
-    });
-  }
-
-  map(packets, encodeOne, function(err, results) {
-    return callback(Buffer.concat(results));
-  });
-};
-
-/*
- * Decodes data when a payload is maybe expected. Strings are decoded by
- * interpreting each byte as a key code for entries marked to start with 0. See
- * description of encodePayloadAsBinary
-
- * @param {Buffer} data, callback method
- * @api public
- */
-
-exports.decodePayloadAsBinary = function (data, binaryType, callback) {
-  if (typeof binaryType == 'function') {
-    callback = binaryType;
-    binaryType = null;
-  }
-
-  var bufferTail = data;
-  var buffers = [];
-
-  while (bufferTail.length > 0) {
-    var strLen = '';
-    var isString = bufferTail[0] == 0;
-    var numberTooLong = false;
-    for (var i = 1; ; i++) {
-      if (bufferTail[i] == 255)  break;
-      // 310 = char length of Number.MAX_VALUE
-      if (strLen.length > 310) {
-        numberTooLong = true;
-        break;
-      }
-      strLen += '' + bufferTail[i];
-    }
-    if(numberTooLong) return callback(err, 0, 1);
-    bufferTail = bufferTail.slice(strLen.length + 1);
-
-    var msgLength = parseInt(strLen, 10);
-
-    var msg = bufferTail.slice(1, msgLength + 1);
-    if (isString) msg = bufferToString(msg);
-    buffers.push(msg);
-    bufferTail = bufferTail.slice(msgLength + 1);
-  }
-
-  var total = buffers.length;
-  buffers.forEach(function(buffer, i) {
-    callback(exports.decodePacket(buffer, binaryType, true), i, total);
-  });
-};
 
 }} //namespace socketio { namespace parser {
 
