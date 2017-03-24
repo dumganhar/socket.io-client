@@ -1,16 +1,74 @@
 #pragma once
 
-struct Data
+enum class PacketType
 {
+    /**
+     * Packet type `connect`.
+     */
+    CONNECT: 0,
+
+    /**
+     * Packet type `disconnect`.
+     */
+    DISCONNECT: 1,
+
+    /**
+     * Packet type `event`.
+     */
+    EVENT: 2,
+
+    /**
+     * Packet type `ack`.
+     */
+    ACK: 3,
+
+    /**
+     * Packet type `error`.
+     */
+    ERROR: 4,
+
+    /**
+     * Packet type 'binary event'
+     */
+    BINARY_EVENT: 5,
+
+    /**
+     * Packet type `binary ack`. For acks with binary arguments.
+     */
+    BINARY_ACK: 6
+};
+
+class Data
+{
+public:
+    Data(uint8_t* data, size_t len);
+    Data(const char* str);
+    Data(const std::string& str);
+    Data(const Data& o);
+    Data(Data&& o);
+
+    Data& operator=(const char* str);
+    Data& operator=(const std::string& str);
+    Data& operator=(const Data& o);
+    Data& operator=(Data&& o);
+
+    const uint8_t* data() const;
+    size_t len() const;
+    const char* c_str() const;
+    bool isBinary() const;
+
+private:
     uint8_t* data;
     size_t len;
+    bool isBinary;
 };
 
 class Packet
 {
 public:
+    std::string id;
     std::string nsp;
-    std::string type;
+    PacketType type;
     std::string query;
     Data data;
 };
@@ -39,3 +97,4 @@ struct Opts
     int timeout;// (Number) connection timeout before a connect_error and connect_timeout events are emitted (20000)
     bool autoConnect;// (Boolean) by setting this false, you have to call manager.open whenever you decide it's appropriate
 };
+

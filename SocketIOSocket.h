@@ -160,6 +160,7 @@ private:
 
     SocketIOManager* _io;
     std::string _nsp;
+    std::string _query;
     std::string _id; // An unique identifier for the socket session. Set after the connect event is triggered, and updated after the reconnect event.
     int _ids;
     std::unordered_map<int, std::function<void(SocketIOSocket*, const Packet&)>> _acks;

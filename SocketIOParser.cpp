@@ -16,7 +16,7 @@ uint8_t protocol = 4;
  * @api public
  */
 
-const char* types = {
+static std::vector<std::string> __types = {
   "CONNECT",
   "DISCONNECT",
   "EVENT",
@@ -35,7 +35,7 @@ Encoder.prototype.encode = function(obj, callback){
     encodeAsBinary(obj, callback);
   }
   else {
-    var encoding = encodeAsString(obj);
+    std::string encoding = encodeAsString(obj);
     callback([encoding]);
   }
 }
@@ -49,22 +49,22 @@ std::string Encoder::encodeAsString(const Packet& obj)
   str += obj.type;
 
   // attachments if we have them
-  if (exports.BINARY_EVENT == obj.type || exports.BINARY_ACK == obj.type) {
+  if (PacketType::BINARY_EVENT == obj.type || PacketType::BINARY_ACK == obj.type) {
     str += obj.attachments;
     str += '-';
   }
 
   // if we have a namespace other than `/`
   // we append it followed by a comma `,`
-  if (obj.nsp && '/' != obj.nsp) {
+  if (!obj.nsp.empty() && "/" != obj.nsp) {
     nsp = true;
     str += obj.nsp;
   }
 
   // immediately followed by the id
-  if (null != obj.id) {
+  if (!obj.id.empty()) {
     if (nsp) {
-      str += ',';
+      str += ",";
       nsp = false;
     }
     str += obj.id;
@@ -72,7 +72,7 @@ std::string Encoder::encodeAsString(const Packet& obj)
 
   // json data
   if (null != obj.data) {
-    if (nsp) str += ',';
+    if (nsp) str += ",";
     str += json.stringify(obj.data);
   }
 
@@ -94,7 +94,7 @@ function encodeAsBinary(obj, callback) {
 
   function writeEncoding(bloblessData) {
     var deconstruction = binary.deconstructPacket(bloblessData);
-    var pack = encodeAsString(deconstruction.packet);
+    std::string pack = encodeAsString(deconstruction.packet);
     var buffers = deconstruction.buffers;
 
     buffers.unshift(pack); // add packet info to beginning of data list
@@ -157,17 +157,19 @@ void Decoder::add(const Data& obj)
   }
 };
 
-Packet Decoder::decodeString(const std::string& str)
+bool Decoder::decodeString(const std::string& str, Packet* packet)
 {
-  Packet p;
-  var i = 0;
+  Packet& p = *packet;
+  size_t i = 0;
 
   // look up type
   p.type = Number(str.charAt(0));
-  if (null == exports.types[p.type]) return error();
+
+  if (p.type < 0 || p.type >= __types.size())
+    return false;
 
   // look up attachments if type binary
-  if (exports.BINARY_EVENT == p.type || exports.BINARY_ACK == p.type) {
+  if (PacketType::BINARY_EVENT == p.type || PacketType::BINARY_ACK == p.type) {
     var buf = '';
     while (str.charAt(++i) != '-') {
       buf += str.charAt(i);

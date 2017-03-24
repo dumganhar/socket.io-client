@@ -5,7 +5,7 @@ namespace socketio { namespace parser {
 
 uint8_t protocol = 3;
 
-std::unordered_map<std::string, uint8_t> packets = {
+static std::unordered_map<std::string, uint8_t> __packets = {
   { "open": 0 },    // non-ws
   { "close": 1 },   // non-ws
   { "ping": 2 },
@@ -18,7 +18,7 @@ std::unordered_map<std::string, uint8_t> packets = {
  * Packet types.
  */
 
-const char* packetslist = {
+static const char* __packetslist = {
   "open",
   "close"
   "ping",
@@ -38,42 +38,6 @@ struct {
 } err = {"error", "parser error"};
 
 
-std::string encodePacket(const Packet& packet, bool supportsBinary, bool utf8encode)
-{
-  if (Buffer.isBuffer(packet.data)) {
-    return encodeBuffer(packet, supportsBinary);
-  } else if (packet.data && (packet.data.buffer || packet.data) instanceof ArrayBuffer) {
-    packet.data = arrayBufferToBuffer(packet.data);
-    return encodeBuffer(packet, supportsBinary, callback);
-  }
-
-  // Sending data as a utf-8 string
-  var encoded = packets[packet.type];
-
-  // data fragment is optional
-  if (undefined != packet.data) {
-    encoded += utf8encode ? utf8.encode(String(packet.data)) : String(packet.data);
-  }
-
-  return callback('' + encoded);
-};
-
-/**
- * Encode Buffer data
- */
-
-std::string encodeBuffer(const Packet& packet, bool supportsBinary)
-{
-  var data = packet.data;
-  if (!supportsBinary) {
-    return exports.encodeBase64Packet(packet, callback);
-  }
-
-  var typeBuffer = new Buffer(1);
-  typeBuffer[0] = packets[packet.type];
-  return callback(Buffer.concat([typeBuffer, data]));
-}
-
 /**
  * Encodes a packet with binary data in a base64 string
  *
@@ -81,15 +45,63 @@ std::string encodeBuffer(const Packet& packet, bool supportsBinary)
  * @return {String} base64 encoded message
  */
 
-exports.encodeBase64Packet = function(packet, callback){
-  if (!Buffer.isBuffer(packet.data)) {
-    packet.data = arrayBufferToBuffer(packet.data);
+std::string encodeBase64Packet(const Packet& packet)
+{
+  std::string message = "b" + __packets[packet.type];
+  message += packet.data.toString('base64');
+  return message;
+};
+
+/**
+ * Encode Buffer data
+ */
+
+static Data encodeBuffer(const Packet& packet, bool supportsBinary)
+{
+  Data& data = packet.data;
+  if (!supportsBinary) {
+    return encodeBase64Packet(packet, callback);
   }
 
-  var message = 'b' + packets[packet.type];
-  message += packet.data.toString('base64');
-  return callback(message);
+  var typeBuffer = new Buffer(1);
+  typeBuffer[0] = packets[packet.type];
+  return callback(Buffer.concat([typeBuffer, data]));
+}
+
+Data encodePacket(const Packet& packet, bool supportsBinary, bool utf8encode)
+{
+  if (packet.data.isBinary) {
+    return encodeBuffer(packet, supportsBinary);
+  }
+
+  Data data;
+  // encode string
+  std::stringstream encoded;
+  // Sending data as a utf-8 string
+  auto iter = __packets.find(packet.type);
+  if (iter == __packets.end())
+    return "";
+
+  encoded << iter->second;
+
+  // data fragment is optional
+  if (!packet.data.isNull()) {
+    if (utf8encode)
+    {
+      encoded << utf8.encode(String(packet.data));
+    }
+    else
+    {
+      encoded << String(packet.data);
+    }
+  }
+
+  return encoded.str();
 };
+
+
+
+
 
 Packet decodePacket(const Data& data, bool binaryType, bool utf8decode)
 {

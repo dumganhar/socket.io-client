@@ -9,7 +9,6 @@ namespace socketio { namespace parser {
  * Current protocol version.
  */
 extern uint8_t protocol;
-extern std::unordered_map<std::string, uint8_t> packets;
 
 
 
@@ -29,7 +28,7 @@ extern std::unordered_map<std::string, uint8_t> packets;
  * @api private
  */
 
-std::string encodePacket(const Packet& packet, bool supportsBinary, bool utf8encode);
+Data encodePacket(const Packet& packet, bool supportsBinary, bool utf8encode);
 
 /**
  * Decodes a packet. Data also available as an ArrayBuffer if requested.

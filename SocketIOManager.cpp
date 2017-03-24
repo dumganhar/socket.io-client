@@ -278,8 +278,8 @@ void SocketIOManager::destroySocket(std::shared_ptr<SocketIOSocket> socket)
 void SocketIOManager::sendPacket(const Packet& packet)
 {
   debug('writing packet %j', packet);
-  if (packet.query && packet.type == 0)
-      packet.nsp += '?' + packet.query;
+  if (!packet.query.empty() && packet.type == 0)
+      packet.nsp += "?" + packet.query;
 
   if (!_encoding) {
     // encode, then write to engine with result
@@ -288,7 +288,7 @@ void SocketIOManager::sendPacket(const Packet& packet)
 
       for (auto& encodedPacket : encodedPackets)
       {
-          _engine.write(encodedPacket, packet.options);
+          _engine->send(encodedPacket, packet.options);
       }
       _encoding = false;
       processPacketQueue();
