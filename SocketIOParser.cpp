@@ -1,6 +1,9 @@
 #include "SocketIOParser.h"
 
-namespace socketio { namespace parser {
+#include "SocketIOBinary.h"
+#include "IOUtils.h"
+
+//namespace socketio { namespace parser {
 
 /**
  * Protocol version.
@@ -20,7 +23,7 @@ uint8_t getProtocolVersion()
  * @api public
  */
 
-static std::vector<std::string> __types = {
+static const std::vector<std::string> __types = {
   "CONNECT",
   "DISCONNECT",
   "EVENT",
@@ -42,7 +45,7 @@ Encoder::~Encoder()
 
 Value Encoder::encode(const SocketIOPacket& obj)
 {
-  debug("encoding packet %j", obj);
+  debug("encoding packet %s", obj.toString().c_str());
 
   if (SocketIOPacket::Type::BINARY_EVENT == obj.type || SocketIOPacket::Type::BINARY_ACK == obj.type) {
     return encodeAsBinary(obj);
@@ -57,44 +60,44 @@ std::string Encoder::encodeAsString(const SocketIOPacket& obj)
   std::string str = "";
   bool nsp = false;
 
-  // first is type
-  str += obj.getType();
+    // first is type
+    str += toString((int)obj.type);
 
   // attachments if we have them
   if (SocketIOPacket::Type::BINARY_EVENT == obj.type || SocketIOPacket::Type::BINARY_ACK == obj.type) {
-    str += obj.getAttachments();
+    str += toString(obj.attachments);
     str += "-";
   }
 
   // if we have a namespace other than `/`
   // we append it followed by a comma `,`
-  if (!obj.getNsp().empty() && "/" != obj.getNsp()) {
+  if (!obj.nsp.empty() && "/" != obj.nsp) {
     nsp = true;
-    str += obj.getNsp();
+    str += obj.nsp;
   }
 
   // immediately followed by the id
-  if (!obj.getId().empty()) {
+  if (obj.id != -1) {
     if (nsp) {
       str += ",";
       nsp = false;
     }
-    str += obj.getId();
+    str += obj.id;
   }
 
   // json data
-  if (obj.getData().isValid()) {
+  if (obj.data.isValid()) {
     if (nsp) str += ",";
-    str += json.stringify(obj.data);
+//cjh    str += json.stringify(obj.data);
   }
 
-  debug("encoded %j as %s", obj, str);
+  debug("encoded %s as %s", obj.toString().c_str(), str.c_str());
   return str;
 }
 
 Value Encoder::encodeAsBinary(const SocketIOPacket& obj)
 {
-    DeconstructedPacket deconstruction = binary::deconstructPacket(bloblessData);
+    binary::DeconstructedPacket deconstruction = binary::deconstructPacket(obj);
     std::string pack = encodeAsString(deconstruction.packet);
     ValueArray& buffers = deconstruction.buffers;
 
@@ -140,7 +143,7 @@ public:
 
   void finishedReconstruction();
 
-private:
+//private:
   SocketIOPacket _reconPack;
   ValueArray _buffers;
 };
@@ -154,7 +157,7 @@ SocketIOPacket BinaryReconstructor::takeBinaryData(const Value& binData)
 {
   SocketIOPacket packet;
   _buffers.push_back(binData);
-  if (_buffers.size() == _reconPack.getAttachments()) { // done with buffer list
+  if (_buffers.size() == _reconPack.attachments) { // done with buffer list
     packet = binary::reconstructPacket(_reconPack, _buffers);
     finishedReconstruction();
   }
@@ -163,7 +166,7 @@ SocketIOPacket BinaryReconstructor::takeBinaryData(const Value& binData)
 
 void BinaryReconstructor::finishedReconstruction()
 {
-  _reconPack.clear();
+  _reconPack.reset();
   _buffers.clear();
 }
 
@@ -184,12 +187,12 @@ bool Decoder::add(const Value& obj)
 {
   SocketIOPacket packet;
   if (obj.getType() == Value::Type::STRING) {
-    packet = decodeString(obj);
-    if (SocketIOPacket::Type::BINARY_EVENT == packet.getType() || SocketIOPacket::Type::BINARY_ACK == packet.getType()) { // binary packet's json
+    packet = decodeString(obj.asString());
+    if (SocketIOPacket::Type::BINARY_EVENT == packet.type || SocketIOPacket::Type::BINARY_ACK == packet.type) { // binary packet's json
       _reconstructor = new BinaryReconstructor(packet);
 
       // no attachments, labeled binary but no binary data to follow
-      if (_reconstructor->reconPack->getAttachments() == 0) {
+      if (_reconstructor->_reconPack.attachments == 0) {
         emit("decoded", packet);
       }
     } else { // non-binary full packet
@@ -198,7 +201,7 @@ bool Decoder::add(const Value& obj)
   }
   else if (obj.getType() == Value::Type::BINARY) {// cjh || obj.base64) { // raw binary data
     if (!_reconstructor) {
-      Error("got binary data when not reconstructing a packet");
+//cjh      Error("got binary data when not reconstructing a packet");
       return false;
     } else {
       packet = _reconstructor->takeBinaryData(obj);
@@ -210,7 +213,7 @@ bool Decoder::add(const Value& obj)
     }
   }
   else {
-    Error("Unknown type: " + obj);
+//cjh    Error("Unknown type: " + obj);
     return false;
   }
 
@@ -220,73 +223,73 @@ bool Decoder::add(const Value& obj)
 SocketIOPacket Decoder::decodeString(const std::string& str)
 {
   SocketIOPacket p;
-  size_t i = 0;
-
-  // look up type
-  p.type = Number(str.charAt(0));
-
-  if (p.type < 0 || p.type >= __types.size())
-    return false;
-
-  // look up attachments if type binary
-  if (SocketIOPacket::Type::BINARY_EVENT == p.type || SocketIOPacket::Type::BINARY_ACK == p.type) {
-    var buf = "";
-    while (str.charAt(++i) != "-") {
-      buf += str.charAt(i);
-      if (i == str.length) break;
-    }
-    if (buf != Number(buf) || str.charAt(i) != "-") {
-      throw new Error("Illegal attachments");
-    }
-    p.attachments = Number(buf);
-  }
-
-  // look up namespace (if any)
-  if ("/" == str.charAt(i + 1)) {
-    p.nsp = "";
-    while (++i) {
-      var c = str.charAt(i);
-      if ("," == c) break;
-      p.nsp += c;
-      if (i == str.length) break;
-    }
-  } else {
-    p.nsp = "/";
-  }
-
-  // look up id
-  var next = str.charAt(i + 1);
-  if ("" != next && Number(next) == next) {
-    p.id = "";
-    while (++i) {
-      var c = str.charAt(i);
-      if (null == c || Number(c) != c) {
-        --i;
-        break;
-      }
-      p.id += str.charAt(i);
-      if (i == str.length) break;
-    }
-    p.id = Number(p.id);
-  }
-
-  // look up json data
-  if (str.charAt(++i)) {
-    p = tryParse(p, str.substr(i));
-  }
-
-  debug("decoded %s as %j", str, p);
+//  size_t i = 0;
+//
+//  // look up type
+//  p.type = Number(str.charAt(0));
+//
+//  if (p.type < 0 || p.type >= __types.size())
+//    return false;
+//
+//  // look up attachments if type binary
+//  if (SocketIOPacket::Type::BINARY_EVENT == p.type || SocketIOPacket::Type::BINARY_ACK == p.type) {
+//    var buf = "";
+//    while (str.charAt(++i) != "-") {
+//      buf += str.charAt(i);
+//      if (i == str.length) break;
+//    }
+//    if (buf != Number(buf) || str.charAt(i) != "-") {
+//      throw new Error("Illegal attachments");
+//    }
+//    p.attachments = Number(buf);
+//  }
+//
+//  // look up namespace (if any)
+//  if ("/" == str.charAt(i + 1)) {
+//    p.nsp = "";
+//    while (++i) {
+//      var c = str.charAt(i);
+//      if ("," == c) break;
+//      p.nsp += c;
+//      if (i == str.length) break;
+//    }
+//  } else {
+//    p.nsp = "/";
+//  }
+//
+//  // look up id
+//  var next = str.charAt(i + 1);
+//  if ("" != next && Number(next) == next) {
+//    p.id = "";
+//    while (++i) {
+//      var c = str.charAt(i);
+//      if (null == c || Number(c) != c) {
+//        --i;
+//        break;
+//      }
+//      p.id += str.charAt(i);
+//      if (i == str.length) break;
+//    }
+//    p.id = Number(p.id);
+//  }
+//
+//  // look up json data
+//  if (str.charAt(++i)) {
+//    p = tryParse(p, str.substr(i));
+//  }
+//
+//  debug("decoded %s as %j", str, p);
   return p;
 }
 
-function tryParse(p, str) {
-  try {
-    p.data = json.parse(str);
-  } catch(e){
-    return error();
-  }
-  return p; 
-};
+//function tryParse(p, str) {
+//  try {
+//    p.data = json.parse(str);
+//  } catch(e){
+//    return error();
+//  }
+//  return p; 
+//};
 
 void Decoder::destroy()
 {
@@ -297,11 +300,11 @@ void Decoder::destroy()
 
 
 
-function error(data){
-  return {
-    type: exports.ERROR,
-    data: "parser error"
-  };
-}
+//function error(data){
+//  return {
+//    type: exports.ERROR,
+//    data: "parser error"
+//  };
+//}
 
-}} // namespace socketio { namespace parser {
+//}} // namespace socketio { namespace parser {

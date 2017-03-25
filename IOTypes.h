@@ -1,5 +1,12 @@
 #pragma once
 
+#include <vector>
+#include <unordered_map>
+#include <functional>
+#include <string>
+
+#include <stdint.h>
+
 class Buffer
 {
 public:
@@ -30,6 +37,7 @@ private:
 };
 
 class Value;
+class SocketIOPacket;
 
 using ValueArray = std::vector<Value>;
 using ValueObject = std::unordered_map<std::string, Value>;
@@ -40,50 +48,68 @@ class Value
 public:
     enum class Type
     {
+        NONE,
         STRING,
         BINARY,
+        BOOLEAN,
         INTEGER,
         FLOAT,
         ARRAY,
         OBJECT,
         FUNCTION,
+        PACKET
     };
 
     Type getType() const;
 
     Value();
     Value(const Value& o);
+    Value(const std::string& str);
     Value(const Buffer& buf);
+    Value(bool v);
     Value(int intVal);
     Value(float floatVal);
     Value(const ValueArray& arrVal);
     Value(const ValueObject& objVal);
+    Value(const SocketIOPacket& packet);
     ~Value();
 
     Value& operator=(const Value& o);
+    Value& operator=(const std::string& o);
     Value& operator=(const Buffer& buf);
+    Value& operator=(bool v);
     Value& operator=(int intVal);
     Value& operator=(float floatVal);
     Value& operator=(const ValueArray& arrVal);
     Value& operator=(const ValueObject& objVal);
+    Value& operator=(const SocketIOPacket& packet);
 
-    const char* asCStr() const;
+    const std::string& asString() const;
     const Buffer& asBuffer() const;
+    bool asBool() const;
     int asInt() const;
     float asFloat() const;
     const ValueArray& asArray() const;
     const ValueObject& asObject() const;
+    const SocketIOPacket& asPacket() const;
 
+    bool isValid() const;
     bool hasBin() const;
+    void reset();
+
+    std::string toString() const;
 
 private:
     union {
-        Buffer* bufVal;
-        int intVal;
-        float floatVal;
-        ValueArray* arrVal;
-        ValueObject* objVal;
-        ValueFunction funcVal;
+        std::string* str;
+        Buffer* buf;
+        bool b;
+        int i;
+        float f;
+        ValueArray* arr;
+        ValueObject* obj;
+        ValueFunction* func;
+        SocketIOPacket* packet;
     } _u;
 
     Type _type;
@@ -96,9 +122,6 @@ class EngineIOPacket
 public:
     static EngineIOPacket ERROR;
 
-
-    
-private:
     std::string type;
 };
 
@@ -112,37 +135,37 @@ public:
         /**
          * Packet type `connect`.
          */
-        CONNECT: 0,
+        CONNECT = 0,
 
         /**
          * Packet type `disconnect`.
          */
-        DISCONNECT: 1,
+        DISCONNECT = 1,
 
         /**
          * Packet type `event`.
          */
-        EVENT: 2,
+        EVENT = 2,
 
         /**
          * Packet type `ack`.
          */
-        ACK: 3,
+        ACK = 3,
 
         /**
          * Packet type `error`.
          */
-        ERROR: 4,
+        ERROR = 4,
 
         /**
          * Packet type "binary event"
          */
-        BINARY_EVENT: 5,
+        BINARY_EVENT = 5,
 
         /**
          * Packet type `binary ack`. For acks with binary arguments.
          */
-        BINARY_ACK: 6
+        BINARY_ACK = 6
     };
 
     SocketIOPacket();
@@ -155,6 +178,8 @@ public:
 
     bool isValid() const;
     void reset();
+
+    std::string toString() const;
 
     int id;
     std::string eventName;

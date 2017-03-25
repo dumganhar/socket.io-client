@@ -1,18 +1,23 @@
 #include "SocketIOBinary.h"
 
+namespace binary {
+
 DeconstructedPacket deconstructPacket(const SocketIOPacket& packet)
 {
   ValueArray buffers;
-  const Value& packetData = packet.getData();
+  const Value& packetData = packet.data;
 
-  auto _deconstructPacket = [](const Value& data) -> Value {
-    if (!data) return data;
+    std::function<Value(const Value&)> _deconstructPacket;
+
+    _deconstructPacket = [&](const Value& data) -> Value {
+    if (!data.isValid()) return data;
 
     if (data.getType() == Value::Type::BINARY) {
-      std::stringstream placeholder;
-      placeholder << "{ _placeholder: true, num:" << (int)buffers.size() << " }";
+      ValueObject placeholder;
+        placeholder["_placeholder"] = true;
+        placeholder["num"] = (int)buffers.size();
       buffers.push_back(data);
-      return placeholder.str();
+      return placeholder;
     } else if (data.getType() == Value::Type::ARRAY) {
       ValueArray newData;
       const ValueArray& originalArr = data.asArray();
@@ -30,7 +35,7 @@ DeconstructedPacket deconstructPacket(const SocketIOPacket& packet)
       return newData;
     }
     return data;
-  }
+  };
   
   SocketIOPacket pack = packet;
   pack.data = _deconstructPacket(packetData);
@@ -44,17 +49,21 @@ DeconstructedPacket deconstructPacket(const SocketIOPacket& packet)
 
 SocketIOPacket reconstructPacket(const SocketIOPacket& packet, const ValueArray& buffers)
 {
-  int curPlaceHolder = 0;
+//  int curPlaceHolder = 0;
 
-  auto _reconstructPacket = [](const Value& data) -> Value {
-    if (data && data._placeholder) {
-      Value& buf = buffers[data.num]; // appropriate buffer (should be natural order anyway)
+    std::function<Value(const Value&)> _reconstructPacket;
+
+    _reconstructPacket = [&](const Value& data) -> Value {
+    if (data.getType() == Value::Type::OBJECT && data.asObject().find("_placeholder") != data.asObject().end()) {
+      const ValueObject& obj = data.asObject();
+      int num = obj.at("num").asInt();
+      const Value& buf = buffers[num]; // appropriate buffer (should be natural order anyway)
       return buf;
     } else if (data.getType() == Value::Type::ARRAY) {
       ValueArray arr;
       const ValueArray& originalArr = data.asArray();
       for (size_t i = 0; i < originalArr.size(); i++) {
-        arr[i] = _reconstructPacket(data[i]);
+        arr[i] = _reconstructPacket(originalArr[i]);
       }
       return arr;
     } else if (data.getType() == Value::Type::OBJECT) {
@@ -69,8 +78,8 @@ SocketIOPacket reconstructPacket(const SocketIOPacket& packet, const ValueArray&
   };
 
   SocketIOPacket p;
-  p.setData(_reconstructPacket(packet.getData()));
-  p.setAttachments(-1); // no longer useful
+  p.data = _reconstructPacket(packet.data);
+  p.attachments = -1; // no longer useful
   return p;
 };
 
@@ -84,47 +93,49 @@ SocketIOPacket reconstructPacket(const SocketIOPacket& packet, const ValueArray&
  * @api private
  */
 
-exports.removeBlobs = function(data, callback) {
-  function _removeBlobs(obj, curKey, containingObject) {
-    if (!obj) return obj;
+// exports.removeBlobs = function(data, callback) {
+//   function _removeBlobs(obj, curKey, containingObject) {
+//     if (!obj) return obj;
 
-    // convert any blob
-    if ((global.Blob && obj instanceof Blob) ||
-        (global.File && obj instanceof File)) {
-      pendingBlobs++;
+//     // convert any blob
+//     if ((global.Blob && obj instanceof Blob) ||
+//         (global.File && obj instanceof File)) {
+//       pendingBlobs++;
 
-      // async filereader
-      var fileReader = new FileReader();
-      fileReader.onload = function() { // this.result == arraybuffer
-        if (containingObject) {
-          containingObject[curKey] = this.result;
-        }
-        else {
-          bloblessData = this.result;
-        }
+//       // async filereader
+//       var fileReader = new FileReader();
+//       fileReader.onload = function() { // this.result == arraybuffer
+//         if (containingObject) {
+//           containingObject[curKey] = this.result;
+//         }
+//         else {
+//           bloblessData = this.result;
+//         }
 
-        // if nothing pending its callback time
-        if(! --pendingBlobs) {
-          callback(bloblessData);
-        }
-      };
+//         // if nothing pending its callback time
+//         if(! --pendingBlobs) {
+//           callback(bloblessData);
+//         }
+//       };
 
-      fileReader.readAsArrayBuffer(obj); // blob -> arraybuffer
-    } else if (isArray(obj)) { // handle array
-      for (var i = 0; i < obj.length; i++) {
-        _removeBlobs(obj[i], i, obj);
-      }
-    } else if (obj && "object" == typeof obj && !isBuf(obj)) { // and object
-      for (var key in obj) {
-        _removeBlobs(obj[key], key, obj);
-      }
-    }
-  }
+//       fileReader.readAsArrayBuffer(obj); // blob -> arraybuffer
+//     } else if (isArray(obj)) { // handle array
+//       for (var i = 0; i < obj.length; i++) {
+//         _removeBlobs(obj[i], i, obj);
+//       }
+//     } else if (obj && "object" == typeof obj && !isBuf(obj)) { // and object
+//       for (var key in obj) {
+//         _removeBlobs(obj[key], key, obj);
+//       }
+//     }
+//   }
 
-  var pendingBlobs = 0;
-  var bloblessData = data;
-  _removeBlobs(bloblessData);
-  if (!pendingBlobs) {
-    callback(bloblessData);
-  }
-};
+//   var pendingBlobs = 0;
+//   var bloblessData = data;
+//   _removeBlobs(bloblessData);
+//   if (!pendingBlobs) {
+//     callback(bloblessData);
+//   }
+// };
+
+} // namespace binary {

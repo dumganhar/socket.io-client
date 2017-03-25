@@ -1,4 +1,5 @@
 #include "Emitter.h"
+#include "IOUtils.h"
 
 Emitter::Emitter()
 {
@@ -19,12 +20,12 @@ void Emitter::on(const std::string& eventName, const std::function<void(const Va
 
 void Emitter::once(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key)
 {
-  auto cb = [this, fn](const Value& args) {
-    off(event, key);
+  auto cb = [=](const Value& args) {
+    off(eventName, key);
     fn(args);
   };
 
-  on(event, cb, key);
+  on(eventName, cb, key);
 }
 
 void Emitter::offAll()
@@ -63,22 +64,22 @@ void Emitter::off(const std::string& eventName, int64_t key)
   }
 }
 
-void Emitter::emit(const std::string& eventName, Args& args)
+void Emitter::emit(const std::string& eventName, const Value& args)
 {
   auto iter = _callbacks.find(eventName);
   if (iter != _callbacks.end())
   {
     std::vector<Callback> copied = iter->second;
-    for (auto& cb : copied)
+    for (const auto& cb : copied)
     {
-      cb(args);
+      cb.fn(args);
     }
   }
 }
 
-const std::vector<Callback>& Emitter::getListeners(const std::string& eventName) const
+const std::vector<Emitter::Callback>& Emitter::getListeners(const std::string& eventName) const
 {
-    return _callbacks[eventName];
+    return _callbacks.at(eventName);
 }
 
 bool Emitter::hasListeners(const std::string& eventName) const
@@ -86,7 +87,7 @@ bool Emitter::hasListeners(const std::string& eventName) const
     return _callbacks.find(eventName) != _callbacks.end();
 }
 
-OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Args&)>& fn, int64_t key)
+OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn, int64_t key)
 {
   obj->on(ev, fn, key);
   OnObj onObj;
@@ -96,7 +97,7 @@ OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::functio
   return onObj;
 }
 
-OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Args&)>& fn)
+OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn)
 {
   int64_t key = grabListenerId();
   return on(obj, ev, fn, key);

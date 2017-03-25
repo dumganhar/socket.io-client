@@ -1,26 +1,12 @@
 #pragma once
 
+#include "IOTypes.h"
+
 class Emitter
 {
 public:
     Emitter();
     virtual ~Emitter();
-
-    struct Callback
-    {
-        std::function<void(const Args&)> fn;
-        int64_t key;
-
-        Callback()
-        : fn(nullptr)
-        , key(-1)
-        {}
-
-        Callback(const std::function<void(const Args&)>& fn_, int64_t key_)
-        : fn(fn_)
-        , key(key_)
-        {}
-    };
 
     /**
      * Listen on the given `event` with `fn`.
@@ -30,7 +16,7 @@ public:
      * @return {Emitter}
      * @api public
      */
-    virtual void on(const std::string& eventName, const std::function<void(const Args&)>& fn, int64_t key);
+    virtual void on(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key);
     /**
      * Adds an `event` listener that will be invoked a single
      * time then automatically removed.
@@ -40,7 +26,7 @@ public:
      * @return {Emitter}
      * @api public
      */
-    virtual void once(const std::string& eventName, const std::function<void(const Args&)>& fn, int64_t key);
+    virtual void once(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key);
 
     /**
      * Remove the given callback for `event` or all
@@ -64,7 +50,24 @@ public:
      * @return {Emitter}
      */
 
-    virtual void emit(const std::string& eventName, Value& args);
+    virtual void emit(const std::string& eventName, const Value& args);
+
+
+    struct Callback
+    {
+        std::function<void(const Value&)> fn;
+        int64_t key;
+
+        Callback()
+        : fn(nullptr)
+        , key(-1)
+        {}
+
+        Callback(const std::function<void(const Value&)>& fn_, int64_t key_)
+        : fn(fn_)
+        , key(key_)
+        {}
+    };
 
     /**
      * Return array of callbacks for `event`.
@@ -87,7 +90,6 @@ public:
     virtual bool hasListeners(const std::string& eventName) const;
 
 private:
-
     std::unordered_map<std::string, std::vector<Callback>> _callbacks;
 };
 
@@ -104,5 +106,5 @@ struct OnObj
  * @api public
  */
 
-OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Args&)>& fn, int64_t key);
-OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Args&)>& fn);
+OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn, int64_t key);
+OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn);

@@ -1,6 +1,8 @@
 #pragma once
 
-namespace socketio { namespace parser {
+#include "Emitter.h"
+
+//namespace socketio { namespace parser {
 
 uint8_t getProtocolVersion();
 
@@ -46,6 +48,8 @@ private:
     Value encodeAsBinary(const SocketIOPacket& obj);
 };
 
+class BinaryReconstructor;
+
 class Decoder : public Emitter
 {
 public:
@@ -83,4 +87,4 @@ private:
     BinaryReconstructor* _reconstructor;
 };
 
-}} //namespace socketio { namespace parser {
+//}} //namespace socketio { namespace parser {

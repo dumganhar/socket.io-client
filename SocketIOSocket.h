@@ -1,5 +1,9 @@
 #pragma once
 
+#include "IOTypes.h"
+
+class SocketIOManager;
+
 class SocketIOSocket : public Emitter
 {
 public:

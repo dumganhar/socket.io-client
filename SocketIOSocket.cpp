@@ -77,9 +77,9 @@ void SocketIOSocket::emit(const std::string& eventName, Args& args)
     parserType = SocketIOPacket::Type::BINARY_EVENT;
   } // binary
   SocketIOPacket packet;
-  packet.setType(parserType);
-  packet.setEventName(eventName);
-  packet.getOptions()["compress"] = _compress;
+  packet.type = parserType;
+  packet.eventName = eventName;
+  packet.options["compress"] = _compress;
 
   // event ack callback
   if (args[args.size() - 1].isFunction()) {
@@ -88,7 +88,7 @@ void SocketIOSocket::emit(const std::string& eventName, Args& args)
     packet.setId(_ids++);
   }
 
-  packet.setData(args);
+  packet.data = args;
 
   if (_connected) {
     sendPacket(packet);
@@ -110,10 +110,10 @@ void SocketIOSocket::onopen()
   // write connect packet if necessary
   if ("/" != _nsp) {
     SocketIOPacket packet;
-    packet.setType(SocketIOPacket::Type::CONNECT);
+    packet.type = SocketIOPacket::Type::CONNECT;
 
     if (!_query.empty()) {
-      packet.setQuery(_query);
+      packet.query = _query;
       sendPacket(packet);
     } else {
       sendPacket(packet);
@@ -132,7 +132,7 @@ void SocketIOSocket::onclose(const std::string& reason)
 
 void SocketIOSocket::onpacket(const SocketIOPacket& packet)
 {
-  if (packet.getNsp() != _nsp) return;
+  if (packet.nsp != _nsp) return;
 
   switch (packet.getType()) {
     case SocketIOPacket::Type::CONNECT:
@@ -167,8 +167,8 @@ void SocketIOSocket::onpacket(const SocketIOPacket& packet)
 
 void SocketIOSocket::onevent(const SocketIOPacket& packet)
 {
-  Value& args = packet.getData();
-  debug("emitting event %j", args);
+  Value& args = packet.data;
+  debug("emitting event %s", args.toString().c_str());
 
   if (packet.getId() != -1) {
     debug("attaching ack callback to event");
@@ -189,7 +189,7 @@ ValueFunction SocketIOSocket::ack(int id)
     // prevent double callbacks
     if (*sent) return;
     *sent = true;
-    debug("sending ack %j", data);
+    debug("sending ack %s", data.toString().c_str());
 
     SocketIOPacket::Type type = hasBin(data) ? SocketIOPacket::Type::BINARY_ACK : SocketIOPacket::Type::ACK;
 

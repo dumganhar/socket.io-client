@@ -1,5 +1,8 @@
+#pragma once
 
+#include "IOTypes.h"
 
+namespace binary {
 
 class DeconstructedPacket
 {
@@ -31,3 +34,5 @@ DeconstructedPacket deconstructPacket(const SocketIOPacket& packet);
  */
 
 SocketIOPacket reconstructPacket(const SocketIOPacket& packet, const ValueArray& buffers);
+
+} // namespace binary {
