@@ -34,7 +34,7 @@ DeconstructedPacket deconstructPacket(const SocketIOPacket& packet)
   
   SocketIOPacket pack = packet;
   pack.data = _deconstructPacket(packetData);
-  pack.attachments = buffers.size(); // number of binary 'attachments'
+  pack.attachments = buffers.size(); // number of binary "attachments"
 
   DeconstructedPacket ret;
   ret.packet = pack;
@@ -114,7 +114,7 @@ exports.removeBlobs = function(data, callback) {
       for (var i = 0; i < obj.length; i++) {
         _removeBlobs(obj[i], i, obj);
       }
-    } else if (obj && 'object' == typeof obj && !isBuf(obj)) { // and object
+    } else if (obj && "object" == typeof obj && !isBuf(obj)) { // and object
       for (var key in obj) {
         _removeBlobs(obj[key], key, obj);
       }

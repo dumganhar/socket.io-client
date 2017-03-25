@@ -27,11 +27,11 @@ void Polling::pause()
 {
   var self = this;
 
-  this.readyState = 'pausing';
+  this.readyState = "pausing";
 
   function pause () {
     debug("paused");
-    self.readyState = 'paused';
+    self.readyState = "paused";
     onPause();
   }
 
@@ -41,7 +41,7 @@ void Polling::pause()
     if (_polling) {
       debug("we are currently polling - waiting to pause");
       total++;
-      this.once('pollComplete', function () {
+      this.once("pollComplete", function () {
         debug("pre-pause polling complete");
         --total || pause();
       });
@@ -50,7 +50,7 @@ void Polling::pause()
     if (!this.writable) {
       debug("we are currently writing - waiting to pause");
       total++;
-      this.once('drain', function () {
+      this.once("drain", function () {
         debug("pre-pause writing complete");
         --total || pause();
       });
@@ -65,7 +65,7 @@ void Polling::poll()
   debug("polling");
   _polling = true;
   this.doPoll();
-  this.emit('poll');
+  this.emit("poll");
 };
 
 void Polling::onData(const Data& data)
@@ -74,7 +74,7 @@ void Polling::onData(const Data& data)
   debug("polling got data %s", data);
   var callback = function (packet, index, total) {
     // if its the first message we consider the transport open
-    if ('opening' == self.readyState) {
+    if ("opening" == self.readyState) {
       self.onOpen();
     }
 
@@ -92,10 +92,10 @@ void Polling::onData(const Data& data)
   parser::decodePayload(data, this.socket.binaryType, callback);
 
   // if an event did not trigger closing
-  if ('closed' != this.readyState) {
+  if ("closed" != this.readyState) {
     // if we got data we're not polling
     _polling = false;
-    this.emit('pollComplete');
+    this.emit("pollComplete");
 
     if ("open" == this.readyState) {
       poll();
@@ -131,7 +131,7 @@ bool Polling::write(const std::vector<Packet>& packets)
   this.writable = false;
   var callbackfn = function () {
     self.writable = true;
-    self.emit('drain');
+    self.emit("drain");
   };
 
   parser.encodePayload(packets, this.supportsBinary, function (data) {
@@ -147,8 +147,8 @@ bool Polling::write(const std::vector<Packet>& packets)
 
 Polling.prototype.uri = function () {
   var query = this.query || {};
-  var schema = this.secure ? 'https' : 'http';
-  var port = '';
+  var schema = this.secure ? "https' : 'http";
+  var port = "";
 
   // cache busting is forced
   if (false != this.timestampRequests) {
@@ -162,16 +162,16 @@ Polling.prototype.uri = function () {
   query = parseqs.encode(query);
 
   // avoid port if default for schema
-  if (this.port && (('https' == schema && Number(this.port) != 443) ||
-     ('http' == schema && Number(this.port) != 80))) {
-    port = ':' + this.port;
+  if (this.port && (("https" == schema && Number(this.port) != 443) ||
+     ("http" == schema && Number(this.port) != 80))) {
+    port = ":" + this.port;
   }
 
   // prepend ? to query
   if (query.length) {
-    query = '?' + query;
+    query = "?" + query;
   }
 
-  var ipv6 = this.hostname.indexOf(':') != -1;
-  return schema + '://' + (ipv6 ? '[' + this.hostname + ']' : this.hostname) + port + this.path + query;
+  var ipv6 = this.hostname.indexOf(":") != -1;
+  return schema + "://' + (ipv6 ? '[' + this.hostname + ']" : this.hostname) + port + this.path + query;
 };

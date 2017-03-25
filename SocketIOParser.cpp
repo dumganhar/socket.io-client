@@ -63,7 +63,7 @@ std::string Encoder::encodeAsString(const SocketIOPacket& obj)
   // attachments if we have them
   if (SocketIOPacket::Type::BINARY_EVENT == obj.type || SocketIOPacket::Type::BINARY_ACK == obj.type) {
     str += obj.getAttachments();
-    str += '-';
+    str += "-";
   }
 
   // if we have a namespace other than `/`
@@ -106,7 +106,7 @@ Value Encoder::encodeAsBinary(const SocketIOPacket& obj)
 //
 
 /**
- * A manager of a binary event's 'buffer sequence'. Should
+ * A manager of a binary event"s 'buffer sequence". Should
  * be constructed whenever a packet of type BINARY_EVENT is
  * decoded.
  *
@@ -190,27 +190,27 @@ bool Decoder::add(const Value& obj)
 
       // no attachments, labeled binary but no binary data to follow
       if (_reconstructor->reconPack->getAttachments() == 0) {
-        emit('decoded', packet);
+        emit("decoded", packet);
       }
     } else { // non-binary full packet
-      emit('decoded', packet);
+      emit("decoded", packet);
     }
   }
   else if (obj.getType() == Value::Type::BINARY) {// cjh || obj.base64) { // raw binary data
     if (!_reconstructor) {
-      Error('got binary data when not reconstructing a packet');
+      Error("got binary data when not reconstructing a packet");
       return false;
     } else {
       packet = _reconstructor->takeBinaryData(obj);
       if (packet.isValid()) { // received final buffer
         delete _reconstructor;
         _reconstructor = nullptr;
-        emit('decoded', packet);
+        emit("decoded", packet);
       }
     }
   }
   else {
-    Error('Unknown type: ' + obj);
+    Error("Unknown type: " + obj);
     return false;
   }
 
@@ -230,34 +230,34 @@ SocketIOPacket Decoder::decodeString(const std::string& str)
 
   // look up attachments if type binary
   if (SocketIOPacket::Type::BINARY_EVENT == p.type || SocketIOPacket::Type::BINARY_ACK == p.type) {
-    var buf = '';
-    while (str.charAt(++i) != '-') {
+    var buf = "";
+    while (str.charAt(++i) != "-") {
       buf += str.charAt(i);
       if (i == str.length) break;
     }
-    if (buf != Number(buf) || str.charAt(i) != '-') {
-      throw new Error('Illegal attachments');
+    if (buf != Number(buf) || str.charAt(i) != "-") {
+      throw new Error("Illegal attachments");
     }
     p.attachments = Number(buf);
   }
 
   // look up namespace (if any)
-  if ('/' == str.charAt(i + 1)) {
-    p.nsp = '';
+  if ("/" == str.charAt(i + 1)) {
+    p.nsp = "";
     while (++i) {
       var c = str.charAt(i);
-      if (',' == c) break;
+      if ("," == c) break;
       p.nsp += c;
       if (i == str.length) break;
     }
   } else {
-    p.nsp = '/';
+    p.nsp = "/";
   }
 
   // look up id
   var next = str.charAt(i + 1);
-  if ('' != next && Number(next) == next) {
-    p.id = '';
+  if ("" != next && Number(next) == next) {
+    p.id = "";
     while (++i) {
       var c = str.charAt(i);
       if (null == c || Number(c) != c) {
@@ -300,7 +300,7 @@ void Decoder::destroy()
 function error(data){
   return {
     type: exports.ERROR,
-    data: 'parser error'
+    data: "parser error"
   };
 }
 

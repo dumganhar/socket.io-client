@@ -127,7 +127,7 @@ void SocketIOSocket::onclose(const std::string& reason)
   _connected = false;
   _disconnected = true;
   _id.clear();
-  emit('disconnect', reason);
+  emit("disconnect", reason);
 }
 
 void SocketIOSocket::onpacket(const SocketIOPacket& packet)
@@ -241,7 +241,7 @@ void SocketIOSocket::ondisconnect()
 {
   debug("server disconnect (%s)", _nsp);
   destroy();
-  onclose('io server disconnect');
+  onclose("io server disconnect");
 }
 
 void SocketIOSocket::destroy()
@@ -270,7 +270,7 @@ void SocketIOSocket::close()
 
   if (_connected) {
     // fire events
-    onclose('io client disconnect');
+    onclose("io client disconnect");
   }
 }
 

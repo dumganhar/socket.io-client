@@ -6,7 +6,7 @@
  */
 
 function Request (opts) {
-  this.method = opts.method || 'GET';
+  this.method = opts.method || "GET";
   this.uri = opts.uri;
   this.xd = !!opts.xd;
   this.xs = !!opts.xs;
@@ -71,25 +71,25 @@ void Request::create()
     if (this.supportsBinary) {
       // This has to be done after open because Firefox is stupid
       // http://stackoverflow.com/questions/13216903/get-binary-data-with-xmlhttprequest-in-a-firefox-extension
-      xhr.responseType = 'arraybuffer';
+      xhr.responseType = "arraybuffer";
     }
 
-    if ('POST' == this.method) {
+    if ("POST" == this.method) {
       try {
         if (this.isBinary) {
-          xhr.setRequestHeader('Content-type', 'application/octet-stream');
+          xhr.setRequestHeader("Content-type', 'application/octet-stream");
         } else {
-          xhr.setRequestHeader('Content-type', 'text/plain;charset=UTF-8');
+          xhr.setRequestHeader("Content-type', 'text/plain;charset=UTF-8");
         }
       } catch (e) {}
     }
 
     try {
-      xhr.setRequestHeader('Accept', '*/*');
+      xhr.setRequestHeader("Accept', '*/*");
     } catch (e) {}
 
     // ie6 check
-    if ('withCredentials' in xhr) {
+    if ("withCredentials" in xhr) {
       xhr.withCredentials = true;
     }
 
@@ -144,7 +144,7 @@ void Request::create()
  */
 
 Request.prototype.onSuccess = function () {
-  this.emit('success');
+  this.emit("success");
   this.cleanup();
 };
 
@@ -155,7 +155,7 @@ Request.prototype.onSuccess = function () {
  */
 
 Request.prototype.onData = function (data) {
-  this.emit('data', data);
+  this.emit("data", data);
   this.onSuccess();
 };
 
@@ -177,7 +177,7 @@ Request.prototype.onError = function (err) {
  */
 
 Request.prototype.cleanup = function (fromError) {
-  if ('undefined' == typeof this.xhr || null == this.xhr) {
+  if ("undefined" == typeof this.xhr || null == this.xhr) {
     return;
   }
   // xmlhttprequest
@@ -211,9 +211,9 @@ Request.prototype.onLoad = function () {
   try {
     var contentType;
     try {
-      contentType = this.xhr.getResponseHeader('Content-Type').split(';')[0];
+      contentType = this.xhr.getResponseHeader("Content-Type').split(';")[0];
     } catch (e) {}
-    if (contentType == 'application/octet-stream') {
+    if (contentType == "application/octet-stream") {
       data = this.xhr.response || this.xhr.responseText;
     } else {
       if (!this.supportsBinary) {
@@ -247,7 +247,7 @@ Request.prototype.onLoad = function () {
  */
 
 Request.prototype.hasXDR = function () {
-  return 'undefined' != typeof global.XDomainRequest && !this.xs && this.enablesXDR;
+  return "undefined" != typeof global.XDomainRequest && !this.xs && this.enablesXDR;
 };
 
 /**
@@ -271,9 +271,9 @@ Request.requests = {};
 
 if (global.document) {
   if (global.attachEvent) {
-    global.attachEvent('onunload', unloadHandler);
+    global.attachEvent("onunload", unloadHandler);
   } else if (global.addEventListener) {
-    global.addEventListener('beforeunload', unloadHandler, false);
+    global.addEventListener("beforeunload", unloadHandler, false);
   }
 }
 

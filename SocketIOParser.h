@@ -34,7 +34,7 @@ private:
     std::string encodeAsString(const SocketIOPacket& obj);
 
     /**
-     * Encode packet as 'buffer sequence' by removing blobs, and
+     * Encode packet as "buffer sequence" by removing blobs, and
      * deconstructing packet into object with placeholders and
      * a list of buffers.
      *

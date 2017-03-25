@@ -135,7 +135,7 @@ public:
         ERROR: 4,
 
         /**
-         * Packet type 'binary event'
+         * Packet type "binary event"
          */
         BINARY_EVENT: 5,
 

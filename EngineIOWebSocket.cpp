@@ -88,7 +88,7 @@ void WS::addEventListeners()
     self.onData(ev.data);
   };
   _ws->onerror = function (e) {
-    self.onError('websocket error', e);
+    self.onError("websocket error", e);
   };
 }
 
@@ -110,7 +110,7 @@ bool WS::write(const std::vector<Packet>& packets)
           }
 
           if (self.perMessageDeflate) {
-            var len = 'string' == typeof data ? global.Buffer.byteLength(data) : data.length;
+            var len = "string" == typeof data ? global.Buffer.byteLength(data) : data.length;
             if (len < self.perMessageDeflate.threshold) {
               opts.compress = false;
             }
@@ -137,13 +137,13 @@ bool WS::write(const std::vector<Packet>& packets)
   }
 
   function done () {
-    emit('flush');
+    emit("flush");
 
     // fake drain
     // defer to next tick to allow Socket to clear writeBuffer
     setTimeout(function () {
       _writable = true;
-      emit('drain');
+      emit("drain");
     }, 0);
   }
 };
@@ -166,13 +166,13 @@ void WS::doClose()
 
 WS.prototype.uri = function () {
   var query = this.query || {};
-  var schema = this.secure ? 'wss' : 'ws';
-  var port = '';
+  var schema = this.secure ? "wss' : 'ws";
+  var port = "";
 
   // avoid port if default for schema
-  if (this.port && (('wss' == schema && Number(this.port) != 443) ||
-    ('ws' == schema && Number(this.port) != 80))) {
-    port = ':' + this.port;
+  if (this.port && (("wss" == schema && Number(this.port) != 443) ||
+    ("ws" == schema && Number(this.port) != 80))) {
+    port = ":" + this.port;
   }
 
   // append timestamp to URI
@@ -189,11 +189,11 @@ WS.prototype.uri = function () {
 
   // prepend ? to query
   if (query.length) {
-    query = '?' + query;
+    query = "?" + query;
   }
 
-  var ipv6 = this.hostname.indexOf(':') != -1;
-  return schema + '://' + (ipv6 ? '[' + this.hostname + ']' : this.hostname) + port + this.path + query;
+  var ipv6 = this.hostname.indexOf(":") != -1;
+  return schema + "://' + (ipv6 ? '[' + this.hostname + ']" : this.hostname) + port + this.path + query;
 };
 
 /**
@@ -204,5 +204,5 @@ WS.prototype.uri = function () {
  */
 
 WS.prototype.check = function () {
-  return !!WebSocket && !('__initialize' in WebSocket && this.name == WS.prototype.name);
+  return !!WebSocket && !("__initialize" in WebSocket && this.name == WS.prototype.name);
 };

@@ -14,7 +14,7 @@ SocketIOSocket* SocketIO::connect(const std::string& uri, const Opts& opts)
   std::string path = parsed.path;
   bool foundIdInCache = __cache.find(id) != __cache.end();
   bool sameNamespace = foundIdInCache && __cache[id]._nsps.find(path) != __cache[id]._nsps.end();
-  bool newConnection = opts.forceNew || opts['force new connection'] ||
+  bool newConnection = opts.forceNew || opts["force new connection"] ||
                       false == opts.multiplex || sameNamespace;
 
   SocketIOManager* io = nullptr;
@@ -32,7 +32,7 @@ SocketIOSocket* SocketIO::connect(const std::string& uri, const Opts& opts)
 
   if (parsed.query && !opts.query) {
     opts.query = parsed.query;
-  } else if (opts && 'object' == typeof opts.query) {
+  } else if (opts && "object" == typeof opts.query) {
     opts.query = encodeQueryString(opts.query);
   }
   return io->createSocket(parsed.path, opts);
@@ -46,10 +46,10 @@ SocketIOSocket* SocketIO::connect(const std::string& uri, const Opts& opts)
 //   var str = [];
 //   for (var p in obj) {
 //     if (obj.hasOwnProperty(p)) {
-//       str.push(encodeURIComponent(p) + '=' + encodeURIComponent(obj[p]));
+//       str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
 //     }
 //   }
-//   return str.join('&');
+//   return str.join("&");
 // }
 
 int SocketIO::getProtocolVersion() const

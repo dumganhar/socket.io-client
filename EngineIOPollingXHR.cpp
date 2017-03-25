@@ -11,7 +11,7 @@ XHR::XHR(const Opts& opts)
   this.requestTimeout = opts.requestTimeout;
 
   if (global.location) {
-    var isSSL = 'https:' == location.protocol;
+    var isSSL = "https:" == location.protocol;
     var port = location.port;
 
     // some user agents have empty `location.port`
@@ -63,12 +63,12 @@ void XHR::request(const Opts& opts)
 
 void XHR::doWrite(const Data& data, const std::function<void()>& fn)
 {
-  var isBinary = typeof data != 'string' && data != undefined;
-  var req = request({ method: 'POST', data: data, isBinary: isBinary });
+  var isBinary = typeof data != "string" && data != undefined;
+  var req = request({ method: "POST", data: data, isBinary: isBinary });
   var self = this;
-  req.on('success', fn);
+  req.on("success", fn);
   req.on("error", function (err) {
-    self.onError('xhr post error', err);
+    self.onError("xhr post error", err);
   });
   this.sendXhr = req;
 };
@@ -84,11 +84,11 @@ void XHR::doPoll()
   debug("xhr poll");
   var req = request();
   var self = this;
-  req.on('data', function (data) {
+  req.on("data", function (data) {
     self.onData(data);
   });
   req.on("error", function (err) {
-    self.onError('xhr poll error', err);
+    self.onError("xhr poll error", err);
   });
   this.pollXhr = req;
 };

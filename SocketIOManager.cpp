@@ -114,7 +114,7 @@ long SocketIOManager::getTimeoutDelay() const
 
 void SocketIOManager::maybeReconnectOnOpen()
 {
-  // Only try to reconnect if it's the first time we're connecting
+  // Only try to reconnect if it"s the first time we"re connecting
   if (!_reconnecting && this._reconnection && _backoff->attempts == 0) {
     // keeps reconnection from firing twice for the same reconnection loop
     reconnect();
@@ -145,9 +145,9 @@ void SocketIOManager::connect(const std::function<void()>& fn, const Opts& opts)
     debug("connect_error");
     cleanup();
     _readyState = ReadyState::CLOSED;
-    emitAll('connect_error', data);
+    emitAll("connect_error", data);
     if (fn) {
-      var err = new Error('Connection error');
+      var err = new Error("Connection error");
       err.data = data;
       fn(err);
     } else {
@@ -166,8 +166,8 @@ void SocketIOManager::connect(const std::function<void()>& fn, const Opts& opts)
       debug("connect attempt timed out after %d", timeout);
       openSub.destroy();
       socket->close();
-      socket->emit("error", 'timeout');
-      emitAll('connect_timeout', timeout);
+      socket->emit("error", "timeout");
+      emitAll("connect_timeout", timeout);
     }, timeout);
 
     OnObj onObj;
@@ -207,12 +207,12 @@ void SocketIOManager::onopen()
 void SocketIOManager::onping()
 {
   this.lastPing = new Date();
-  emitAll('ping');
+  emitAll("ping");
 };
 
 void SocketIOManager::onpong()
 {
-  emitAll('pong', new Date() - this.lastPing);
+  emitAll("pong", new Date() - this.lastPing);
 }
 
 void SocketIOManager::ondata(const Data& data)
@@ -362,7 +362,7 @@ void SocketIOManager::reconnect()
   if (_backoff->attempts >= this._reconnectionAttempts) {
     debug("reconnect failed");
     _backoff->reset();
-    emitAll('reconnect_failed');
+    emitAll("reconnect_failed");
     _reconnecting = false;
   } else {
     var delay = _backoff->duration();
@@ -373,8 +373,8 @@ void SocketIOManager::reconnect()
       if (_skipReconnect) return;
 
       debug("attempting reconnect");
-      self.emitAll('reconnect_attempt', self.backoff.attempts);
-      self.emitAll('reconnecting', self.backoff.attempts);
+      self.emitAll("reconnect_attempt", self.backoff.attempts);
+      self.emitAll("reconnecting", self.backoff.attempts);
 
       // check again for the case socket closed in above events
       if (_skipReconnect) return;
@@ -384,7 +384,7 @@ void SocketIOManager::reconnect()
           debug("reconnect attempt error");
           _reconnecting = false;
           reconnect();
-          emitAll('reconnect_error', err.data);
+          emitAll("reconnect_error", err.data);
         } else {
           debug("reconnect success");
           onreconnect();
@@ -406,5 +406,5 @@ void SocketIOManager::onreconnect()
   _reconnecting = false;
   _backoff->reset();
   updateSocketIds();
-  emitAll('reconnect', attempt);
+  emitAll("reconnect", attempt);
 };
