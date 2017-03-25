@@ -10,16 +10,16 @@ Emitter::~Emitter()
 
 }
 
-void Emitter::on(const std::string& eventName, const std::function<void(const Args&)>& fn, int64_t key)
+void Emitter::on(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key)
 {
   Callback cb(fn, key);
   _callbacks[eventName].push_back(std::move(cb));
 }
 
 
-void Emitter::once(const std::string& eventName, const std::function<void(const Args&)>& fn, int64_t key)
+void Emitter::once(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key)
 {
-  auto cb = [this, fn](const Args& args) {
+  auto cb = [this, fn](const Value& args) {
     off(event, key);
     fn(args);
   };
@@ -63,7 +63,7 @@ void Emitter::off(const std::string& eventName, int64_t key)
   }
 }
 
-void Emitter::emit(const std::string& eventName, const Args& args)
+void Emitter::emit(const std::string& eventName, Args& args)
 {
   auto iter = _callbacks.find(eventName);
   if (iter != _callbacks.end())

@@ -100,7 +100,7 @@ private:
      * @api private
      */
 
-    void emitAll(const std::string& eventName, const Args& args);
+    void emitAll(const std::string& eventName, Args& args);
 
     /**
      * Starts trying to reconnect if reconnection is enabled and we have not
@@ -141,7 +141,7 @@ private:
      * @api private
      */
 
-    void ondata(const Data& data);
+    void ondata(const Value& data);
 
     /**
      * Called when parser fully decodes a packet.
@@ -149,7 +149,7 @@ private:
      * @api private
      */
 
-    void ondecoded(const Packet& packet);
+    void ondecoded(const SocketIOPacket& packet);
 
     /**
      * Called upon socket error.
@@ -166,7 +166,7 @@ private:
      * @api private
      */
 
-    void sendPacket(const Packet& packet);
+    void sendPacket(const SocketIOPacket& packet);
 
     /**
      * If packet buffer is non-empty, begins encoding the
@@ -231,7 +231,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<SocketIOSocket>> _nsps;
     std::vector<std::shared_ptr<SocketIOSocket>> _connecting;
     std::vector<OnObj> _subs;
-    std::vector<Packet> _packetBuffer;
+    std::vector<SocketIOPacket> _packetBuffer;
     std::shared_ptr<EngineIOSocket> _engine;
     std::string _uri;
 

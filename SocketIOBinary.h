@@ -4,12 +4,8 @@
 class DeconstructedPacket
 {
 public:
-    const SocketIOPacket& getPacket() const;
-    const std::vector<Data>& getBuffers() const;
-
-private:
-    SocketIOPacket _packet;
-    std::vector<Data> _buffers;
+    SocketIOPacket packet;
+    ValueArray buffers;
 };
 
 /**
@@ -34,4 +30,4 @@ DeconstructedPacket deconstructPacket(const SocketIOPacket& packet);
  * @api public
  */
 
-SocketIOPacket reconstructPacket(const SocketIOPacket& packet, const std::vector<Data>& buffers);
+SocketIOPacket reconstructPacket(const SocketIOPacket& packet, const ValueArray& buffers);

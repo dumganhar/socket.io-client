@@ -33,7 +33,7 @@ SocketIOManager::SocketIOManager(const std::string& uri, const Opts& opts)
     connect();
 }
 
-void SocketIOManager::emitAll(const std::string& eventName, const Args& args)
+void SocketIOManager::emitAll(const std::string& eventName, Args& args)
 {
   Emitter::emit(eventName, args);
 
@@ -124,11 +124,11 @@ void SocketIOManager::maybeReconnectOnOpen()
 //open 
 void SocketIOManager::connect(const std::function<void()>& fn, const Opts& opts)
 {
-  debug('readyState %s', _readyState);
+  debug("readyState %s", _readyState);
   if (_readyState == ReadyState::OPEN)
     return;
 
-  debug('opening %s', _uri.c_str());
+  debug("opening %s", _uri.c_str());
   _engine = new EngineIOSocket(_uri, _opts);
   auto socket = _engine;
   _readyState = ReadyState::OPENING;
@@ -142,7 +142,7 @@ void SocketIOManager::connect(const std::function<void()>& fn, const Opts& opts)
 
   // emit `connect_error`
   OnObj errorSub = on(socket, "error", [this, fn](data) {
-    debug('connect_error');
+    debug("connect_error");
     cleanup();
     _readyState = ReadyState::CLOSED;
     emitAll('connect_error', data);
@@ -159,11 +159,11 @@ void SocketIOManager::connect(const std::function<void()>& fn, const Opts& opts)
   // emit `connect_timeout`
   if (false != _timeout) {
     float timeout = _timeout;
-    debug('connect attempt will timeout after %d', timeout);
+    debug("connect attempt will timeout after %d", timeout);
 
     // set timer
     var timer = setTimeout([this]() {
-      debug('connect attempt timed out after %d', timeout);
+      debug("connect attempt timed out after %d", timeout);
       openSub.destroy();
       socket->close();
       socket->emit("error", 'timeout');
@@ -275,24 +275,24 @@ void SocketIOManager::destroySocket(std::shared_ptr<SocketIOSocket> socket)
   disconnect();
 };
 
-void SocketIOManager::sendPacket(const Packet& packet)
+void SocketIOManager::sendPacket(const SocketIOPacket& packet)
 {
-  debug('writing packet %j', packet);
+  debug("writing packet %j", packet);
   if (!packet.query.empty() && packet.type == 0)
       packet.nsp += "?" + packet.query;
 
   if (!_encoding) {
     // encode, then write to engine with result
     _encoding = true;
-    _encoder->encode(packet, [this](encodedPackets) {
+    ValueArray encodedPackets = _encoder->encode(packet);
 
-      for (auto& encodedPacket : encodedPackets)
-      {
-          _engine->send(encodedPacket, packet.options);
-      }
-      _encoding = false;
-      processPacketQueue();
-    });
+    for (const auto& encodedPacket : encodedPackets)
+    {
+        _engine->send(encodedPacket, packet.options);
+    }
+    _encoding = false;
+    processPacketQueue();
+
   } else { // add packet to the queue
     _packetBuffer.push_back(packet);
   }
@@ -309,7 +309,7 @@ void SocketIOManager::processPacketQueue()
 
 void SocketIOManager::cleanup()
 {
-  debug('cleanup');
+  debug("cleanup");
 
   var subsLength = _subs.length;
   for (var i = 0; i < subsLength; i++) {
@@ -326,7 +326,7 @@ void SocketIOManager::cleanup()
 
 void SocketIOManager::disconnect()
 {
-  debug('disconnect');
+  debug("disconnect");
   _skipReconnect = true;
   _reconnecting = false;
   if (ReadyState::OPENING == _readyState) {
@@ -342,7 +342,7 @@ void SocketIOManager::disconnect()
 
 void SocketIOManager::onclose(const std::string& reason)
 {
-  debug('onclose');
+  debug("onclose");
 
   this.cleanup();
   _backoff->reset();
@@ -360,19 +360,19 @@ void SocketIOManager::reconnect()
     return this;
 
   if (_backoff->attempts >= this._reconnectionAttempts) {
-    debug('reconnect failed');
+    debug("reconnect failed");
     _backoff->reset();
     emitAll('reconnect_failed');
     _reconnecting = false;
   } else {
     var delay = _backoff->duration();
-    debug('will wait %dms before reconnect attempt', delay);
+    debug("will wait %dms before reconnect attempt", delay);
 
     _reconnecting = true;
     var timer = setTimeout(function () {
       if (_skipReconnect) return;
 
-      debug('attempting reconnect');
+      debug("attempting reconnect");
       self.emitAll('reconnect_attempt', self.backoff.attempts);
       self.emitAll('reconnecting', self.backoff.attempts);
 
@@ -381,12 +381,12 @@ void SocketIOManager::reconnect()
 
       this->connect(function (err) {
         if (err) {
-          debug('reconnect attempt error');
+          debug("reconnect attempt error");
           _reconnecting = false;
           reconnect();
           emitAll('reconnect_error', err.data);
         } else {
-          debug('reconnect success');
+          debug("reconnect success");
           onreconnect();
         }
       });

@@ -20,11 +20,11 @@ SocketIOSocket* SocketIO::connect(const std::string& uri, const Opts& opts)
   SocketIOManager* io = nullptr;
 
   if (newConnection) {
-    debug('ignoring socket cache for %s', source);
+    debug("ignoring socket cache for %s", source);
     io = new SocketIOManager(source, opts);
   } else {
     if (!foundIdInCache) {
-      debug('new io instance for %s', source);
+      debug("new io instance for %s", source);
       __cache.emplace(id, new SocketIOManager(source, opts));
     }
     io = __cache[id];

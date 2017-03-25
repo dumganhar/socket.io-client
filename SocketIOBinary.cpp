@@ -1,27 +1,31 @@
+#include "SocketIOBinary.h"
 
 DeconstructedPacket deconstructPacket(const SocketIOPacket& packet)
 {
-  std::vector<Data> buffers;
-  var packetData = packet.data;
+  ValueArray buffers;
+  const Value& packetData = packet.getData();
 
-  auto _deconstructPacket = [](data) -> Object {
+  auto _deconstructPacket = [](const Value& data) -> Value {
     if (!data) return data;
 
-    if (isBuf(data)) {
+    if (data.getType() == Value::Type::BINARY) {
       std::stringstream placeholder;
-      placeholder << "{ _placeholder: true, num:" << (int)buffers.size() << " %d }";
-      buffers.push(data);
+      placeholder << "{ _placeholder: true, num:" << (int)buffers.size() << " }";
+      buffers.push_back(data);
       return placeholder.str();
-    } else if (isArray(data)) {
-      var newData = new Array(data.length);
-      for (var i = 0; i < data.length; i++) {
-        newData[i] = _deconstructPacket(data[i]);
+    } else if (data.getType() == Value::Type::ARRAY) {
+      ValueArray newData;
+      const ValueArray& originalArr = data.asArray();
+      newData.resize(originalArr.size());
+      for (size_t i = 0; i < originalArr.size(); i++) {
+        newData[i] = _deconstructPacket(originalArr[i]);
       }
       return newData;
-    } else if ('object' == typeof data && !(data instanceof Date)) {
-      var newData = {};
-      for (var key in data) {
-        newData[key] = _deconstructPacket(data[key]);
+    } else if (data.getType() == Value::Type::OBJECT) {
+      ValueObject newData;
+      const ValueObject& originalObj = data.asObject();
+      for (const auto& e : originalObj) {
+        newData[e.first] = _deconstructPacket(e.second);
       }
       return newData;
     }
@@ -38,31 +42,36 @@ DeconstructedPacket deconstructPacket(const SocketIOPacket& packet)
   return ret;
 }
 
-SocketIOPacket reconstructPacket(const SocketIOPacket& packet, const std::vector<Data>& buffers)
+SocketIOPacket reconstructPacket(const SocketIOPacket& packet, const ValueArray& buffers)
 {
-  var curPlaceHolder = 0;
+  int curPlaceHolder = 0;
 
-  function _reconstructPacket(data) {
+  auto _reconstructPacket = [](const Value& data) -> Value {
     if (data && data._placeholder) {
-      var buf = buffers[data.num]; // appropriate buffer (should be natural order anyway)
+      Value& buf = buffers[data.num]; // appropriate buffer (should be natural order anyway)
       return buf;
-    } else if (isArray(data)) {
-      for (var i = 0; i < data.length; i++) {
-        data[i] = _reconstructPacket(data[i]);
+    } else if (data.getType() == Value::Type::ARRAY) {
+      ValueArray arr;
+      const ValueArray& originalArr = data.asArray();
+      for (size_t i = 0; i < originalArr.size(); i++) {
+        arr[i] = _reconstructPacket(data[i]);
       }
-      return data;
-    } else if (data && 'object' == typeof data) {
-      for (var key in data) {
-        data[key] = _reconstructPacket(data[key]);
+      return arr;
+    } else if (data.getType() == Value::Type::OBJECT) {
+      ValueObject obj;
+      const ValueObject& originalObj = data.asObject();
+      for (const auto& e : originalObj) {
+        obj[e.first] = _reconstructPacket(e.second);
       }
-      return data;
+      return obj;
     }
     return data;
-  }
+  };
 
-  packet.data = _reconstructPacket(packet.data);
-  packet.attachments = -1; // no longer useful
-  return packet;
+  SocketIOPacket p;
+  p.setData(_reconstructPacket(packet.getData()));
+  p.setAttachments(-1); // no longer useful
+  return p;
 };
 
 /**

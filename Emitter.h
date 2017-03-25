@@ -64,7 +64,7 @@ public:
      * @return {Emitter}
      */
 
-    virtual void emit(const std::string& eventName, const Args& args);
+    virtual void emit(const std::string& eventName, Value& args);
 
     /**
      * Return array of callbacks for `event`.

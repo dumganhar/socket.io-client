@@ -8,7 +8,11 @@ namespace socketio { namespace parser {
  * @api public
  */
 
-uint8_t protocol = 4;
+uint8_t getProtocolVersion()
+{
+  return 4;
+}
+
 
 /**
  * Packet types.
@@ -36,9 +40,9 @@ Encoder::~Encoder()
 
 }
 
-Data Encoder::encode(const SocketIOPacket& obj)
+Value Encoder::encode(const SocketIOPacket& obj)
 {
-  debug('encoding packet %j', obj);
+  debug("encoding packet %j", obj);
 
   if (SocketIOPacket::Type::BINARY_EVENT == obj.type || SocketIOPacket::Type::BINARY_ACK == obj.type) {
     return encodeAsBinary(obj);
@@ -84,22 +88,18 @@ std::string Encoder::encodeAsString(const SocketIOPacket& obj)
     str += json.stringify(obj.data);
   }
 
-  debug('encoded %j as %s', obj, str);
+  debug("encoded %j as %s", obj, str);
   return str;
 }
 
-Data Encoder::encodeAsBinary(const SocketIOPacket& obj)
+Value Encoder::encodeAsBinary(const SocketIOPacket& obj)
 {
-  function writeEncoding(bloblessData) {
-    var deconstruction = binary.deconstructPacket(bloblessData);
+    DeconstructedPacket deconstruction = binary::deconstructPacket(bloblessData);
     std::string pack = encodeAsString(deconstruction.packet);
-    var buffers = deconstruction.buffers;
+    ValueArray& buffers = deconstruction.buffers;
 
-    buffers.unshift(pack); // add packet info to beginning of data list
-    callback(buffers); // write all the buffers
-  }
-
-  binary.removeBlobs(obj, writeEncoding);
+    buffers.insert(buffers.begin(), pack); // add packet info to beginning of data list
+    return buffers;
 }
 
 
@@ -130,7 +130,7 @@ public:
    * @api private
    */
 
-  SocketIOPacket takeBinaryData(const Data& binData);
+  SocketIOPacket takeBinaryData(const Value& binData);
 
   /**
    * Cleans up binary packet reconstruction variables.
@@ -142,7 +142,7 @@ public:
 
 private:
   SocketIOPacket _reconPack;
-  std::vector<Data> _buffers;
+  ValueArray _buffers;
 };
 
 BinaryReconstructor::BinaryReconstructor(const SocketIOPacket& packet)
@@ -150,12 +150,12 @@ BinaryReconstructor::BinaryReconstructor(const SocketIOPacket& packet)
 {
 }
 
-SocketIOPacket BinaryReconstructor::takeBinaryData(const Data& binData)
+SocketIOPacket BinaryReconstructor::takeBinaryData(const Value& binData)
 {
   SocketIOPacket packet;
   _buffers.push_back(binData);
   if (_buffers.size() == _reconPack.getAttachments()) { // done with buffer list
-    packet = binary.reconstructPacket(_reconPack, _buffers);
+    packet = binary::reconstructPacket(_reconPack, _buffers);
     finishedReconstruction();
   }
   return packet;
@@ -163,7 +163,7 @@ SocketIOPacket BinaryReconstructor::takeBinaryData(const Data& binData)
 
 void BinaryReconstructor::finishedReconstruction()
 {
-  _reconPack.reset();
+  _reconPack.clear();
   _buffers.clear();
 }
 
@@ -177,40 +177,45 @@ Decoder::Decoder()
 
 Decoder::~Decoder()
 {
-
+  delete _reconstructor;
 }
 
-void Decoder::add(const Data& obj)
+bool Decoder::add(const Value& obj)
 {
-  var packet;
-  if ('string' == typeof obj) {
+  SocketIOPacket packet;
+  if (obj.getType() == Value::Type::STRING) {
     packet = decodeString(obj);
-    if (exports.BINARY_EVENT == packet.type || exports.BINARY_ACK == packet.type) { // binary packet's json
-      this.reconstructor = new BinaryReconstructor(packet);
+    if (SocketIOPacket::Type::BINARY_EVENT == packet.getType() || SocketIOPacket::Type::BINARY_ACK == packet.getType()) { // binary packet's json
+      _reconstructor = new BinaryReconstructor(packet);
 
       // no attachments, labeled binary but no binary data to follow
-      if (this.reconstructor.reconPack.attachments == 0) {
-        this.emit('decoded', packet);
+      if (_reconstructor->reconPack->getAttachments() == 0) {
+        emit('decoded', packet);
       }
     } else { // non-binary full packet
-      this.emit('decoded', packet);
+      emit('decoded', packet);
     }
   }
-  else if (isBuf(obj) || obj.base64) { // raw binary data
-    if (!this.reconstructor) {
-      throw new Error('got binary data when not reconstructing a packet');
+  else if (obj.getType() == Value::Type::BINARY) {// cjh || obj.base64) { // raw binary data
+    if (!_reconstructor) {
+      Error('got binary data when not reconstructing a packet');
+      return false;
     } else {
-      packet = this.reconstructor.takeBinaryData(obj);
-      if (packet) { // received final buffer
-        this.reconstructor = null;
-        this.emit('decoded', packet);
+      packet = _reconstructor->takeBinaryData(obj);
+      if (packet.isValid()) { // received final buffer
+        delete _reconstructor;
+        _reconstructor = nullptr;
+        emit('decoded', packet);
       }
     }
   }
   else {
-    throw new Error('Unknown type: ' + obj);
+    Error('Unknown type: ' + obj);
+    return false;
   }
-};
+
+  return true;
+}
 
 SocketIOPacket Decoder::decodeString(const std::string& str)
 {
@@ -270,7 +275,7 @@ SocketIOPacket Decoder::decodeString(const std::string& str)
     p = tryParse(p, str.substr(i));
   }
 
-  debug('decoded %s as %j', str, p);
+  debug("decoded %s as %j", str, p);
   return p;
 }
 
@@ -285,8 +290,8 @@ function tryParse(p, str) {
 
 void Decoder::destroy()
 {
-  if (this.reconstructor) {
-    this.reconstructor.finishedReconstruction();
+  if (_reconstructor) {
+    _reconstructor->finishedReconstruction();
   }
 };
 

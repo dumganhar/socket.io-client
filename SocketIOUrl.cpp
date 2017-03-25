@@ -27,7 +27,7 @@
 //     }
 
 //     if (!/^(https?|wss?):\/\//.test(uri)) {
-//       debug('protocol-less url %s', uri);
+//       debug("protocol-less url %s", uri);
 //       if ('undefined' != typeof loc) {
 //         uri = loc.protocol + '//' + uri;
 //       } else {
@@ -36,7 +36,7 @@
 //     }
 
 //     // parse
-//     debug('parse %s', uri);
+//     debug("parse %s", uri);
 //     obj = parseuri(uri);
 //   }
 

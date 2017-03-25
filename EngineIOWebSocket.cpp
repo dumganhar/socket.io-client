@@ -128,7 +128,7 @@ bool WS::write(const std::vector<Packet>& packets)
             _ws->send(data, opts);
           }
         } catch (e) {
-          debug('websocket closed before onclose event');
+          debug("websocket closed before onclose event");
         }
 
         --total || done();

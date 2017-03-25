@@ -81,7 +81,7 @@ void XHR::doWrite(const Data& data, const std::function<void()>& fn)
 
 void XHR::doPoll()
 {
-  debug('xhr poll');
+  debug("xhr poll");
   var req = request();
   var self = this;
   req.on('data', function (data) {

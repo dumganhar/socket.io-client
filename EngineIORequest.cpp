@@ -56,7 +56,7 @@ void Request::create()
   var self = this;
 
   try {
-    debug('xhr open %s: %s', this.method, this.uri);
+    debug("xhr open %s: %s", this.method, this.uri);
     xhr.open(this.method, this.uri, this.async);
     try {
       if (this.extraHeaders) {
@@ -119,7 +119,7 @@ void Request::create()
       };
     }
 
-    debug('xhr data %s', this.data);
+    debug("xhr data %s", this.data);
     xhr.send(this.data);
   } catch (e) {
     // Need to defer since .create() is called directly fhrom the constructor

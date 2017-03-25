@@ -31,19 +31,22 @@ private:
 
 class Value;
 
-using Array = std::vector<Value>;
-using Object = std::unordered_map<std::string, Value>;
+using ValueArray = std::vector<Value>;
+using ValueObject = std::unordered_map<std::string, Value>;
+using ValueFunction = std::function<void(const Value&)>;
 
 class Value
 {
 public:
     enum class Type
     {
-        BUFFER,
+        STRING,
+        BINARY,
         INTEGER,
         FLOAT,
         ARRAY,
-        OBJECT
+        OBJECT,
+        FUNCTION,
     };
 
     Type getType() const;
@@ -53,44 +56,50 @@ public:
     Value(const Buffer& buf);
     Value(int intVal);
     Value(float floatVal);
-    Value(const Array& arrVal);
-    Value(const Object& objVal);
+    Value(const ValueArray& arrVal);
+    Value(const ValueObject& objVal);
     ~Value();
 
     Value& operator=(const Value& o);
     Value& operator=(const Buffer& buf);
     Value& operator=(int intVal);
     Value& operator=(float floatVal);
-    Value& operator=(const Array& arrVal);
-    Value& operator=(const Object& objVal);
+    Value& operator=(const ValueArray& arrVal);
+    Value& operator=(const ValueObject& objVal);
 
+    const char* asCStr() const;
     const Buffer& asBuffer() const;
     int asInt() const;
     float asFloat() const;
-    const Array& asArray() const;
-    const Object& asObject() const;
+    const ValueArray& asArray() const;
+    const ValueObject& asObject() const;
+
+    bool hasBin() const;
 
 private:
     union {
         Buffer* bufVal;
         int intVal;
         float floatVal;
-        Array* arrVal;
-        Object* objVal;
+        ValueArray* arrVal;
+        ValueObject* objVal;
+        ValueFunction funcVal;
     } _u;
 
     Type _type;
 };
 
-using Values = std::vector<Value>;
-using Args = Values;
+using Args = ValueArray;
 
 class EngineIOPacket
 {
 public:
     static EngineIOPacket ERROR;
+
+
+    
 private:
-    std::string _type;
+    std::string type;
 };
 
 class SocketIOPacket
@@ -147,31 +156,14 @@ public:
     bool isValid() const;
     void reset();
 
-    void setId(const std::string& id);
-    const std::string& getId() const;
-
-    void setNsp(const std::string& nsp);
-    const std::string& getNsp() const;
-
-    void setType(PacketType type);
-    PacketType getType() const;
-
-    void setQuery(const std::string& query);
-    const std::string& getQuery() const;
-
-    void setData(const Values& data);
-    void setData(Values&& data);
-    const Values& getData() const;
-
-    int getAttachments() const;
-
-private:
-    int _id;
-    std::string _nsp;
-    Type _type;
-    std::string _query;
-    int _attachments;  // -1 means not useful
-    Values _data;
+    int id;
+    std::string eventName;
+    std::string nsp;
+    Type type;
+    std::string query;
+    int attachments;  // -1 means not useful
+    Value data;
+    ValueObject options;
 };
 
 
@@ -199,6 +191,6 @@ struct Opts
     bool autoConnect;// (Boolean) by setting this false, you have to call manager.open whenever you decide it's appropriate
 };
 
-
+#define debug(...) printf(__VA_ARGS__)
 
 

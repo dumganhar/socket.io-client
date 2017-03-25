@@ -27,7 +27,7 @@ public:
      * @api public
      */
 
-    void send(const Args& args);
+    void send(Args& args);
 
     /**
      * Disconnects the socket manually.
@@ -48,8 +48,7 @@ public:
 
     const std::string& getId() const { return _id; }
 
-    virtual void emit(const std::string& eventName, const Args& args) override;
-
+    virtual void emit(const std::string& eventName, Args& args) override;
 
 private:
 
@@ -104,14 +103,13 @@ private:
 
     void onevent(const SocketIOPacket& packet);
 
-    using AckCallback = std::function<void(const Data&)>;
     /**
      * Produces an ack callback to emit with an event.
      *
      * @api private
      */
 
-    AckCallback ack(int id);
+    ValueFunction ack(int id);
 
     /**
      * Called upon a server acknowlegement.
@@ -164,7 +162,7 @@ private:
     std::string _query;
     std::string _id; // An unique identifier for the socket session. Set after the connect event is triggered, and updated after the reconnect event.
     int _ids;
-    std::unordered_map<int, AckCallback> _acks;
+    std::unordered_map<int, ValueFunction> _acks;
     std::vector<Args> _receiveBuffer;
     std::vector<SocketIOPacket> _sendBuffer;
     std::vector<OnObj> _subs;

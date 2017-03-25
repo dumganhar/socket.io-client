@@ -2,7 +2,7 @@
 
 namespace socketio { namespace parser {
 
-extern uint8_t protocol;
+uint8_t getProtocolVersion();
 
 class Encoder
 {
@@ -19,7 +19,7 @@ public:
      * @return Calls callback with Array of encodings
      * @api public
      */
-    Data encode(const SocketIOPacket& obj);
+    Value encode(const SocketIOPacket& obj);
 
 private:
 
@@ -43,7 +43,7 @@ private:
      * @api private
      */
 
-    Data encodeAsBinary(const SocketIOPacket& obj);
+    Value encodeAsBinary(const SocketIOPacket& obj);
 };
 
 class Decoder : public Emitter
@@ -59,7 +59,7 @@ public:
      * @return {Object} packet
      * @api public
      */
-    void add(const Data& obj);
+    bool add(const Value& obj);
 
     /**
      * Deallocates a parser's resources
@@ -78,7 +78,9 @@ private:
      * @return {Object} packet
      * @api private
      */
-    Packet decodeString(const std::string& str);
+    SocketIOPacket decodeString(const std::string& str);
+
+    BinaryReconstructor* _reconstructor;
 };
 
 }} //namespace socketio { namespace parser {

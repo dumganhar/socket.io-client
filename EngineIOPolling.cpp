@@ -30,7 +30,7 @@ void Polling::pause()
   this.readyState = 'pausing';
 
   function pause () {
-    debug('paused');
+    debug("paused");
     self.readyState = 'paused';
     onPause();
   }
@@ -39,19 +39,19 @@ void Polling::pause()
     var total = 0;
 
     if (_polling) {
-      debug('we are currently polling - waiting to pause');
+      debug("we are currently polling - waiting to pause");
       total++;
       this.once('pollComplete', function () {
-        debug('pre-pause polling complete');
+        debug("pre-pause polling complete");
         --total || pause();
       });
     }
 
     if (!this.writable) {
-      debug('we are currently writing - waiting to pause');
+      debug("we are currently writing - waiting to pause");
       total++;
       this.once('drain', function () {
-        debug('pre-pause writing complete');
+        debug("pre-pause writing complete");
         --total || pause();
       });
     }
@@ -62,7 +62,7 @@ void Polling::pause()
 
 void Polling::poll()
 {
-  debug('polling');
+  debug("polling");
   _polling = true;
   this.doPoll();
   this.emit('poll');
@@ -71,7 +71,7 @@ void Polling::poll()
 void Polling::onData(const Data& data)
 {
   var self = this;
-  debug('polling got data %s', data);
+  debug("polling got data %s", data);
   var callback = function (packet, index, total) {
     // if its the first message we consider the transport open
     if ('opening' == self.readyState) {
@@ -100,7 +100,7 @@ void Polling::onData(const Data& data)
     if ("open" == this.readyState) {
       poll();
     } else {
-      debug('ignoring poll - transport state "%s"', this.readyState);
+      debug("ignoring poll - transport state "%s"", this.readyState);
     }
   }
 };
@@ -110,17 +110,17 @@ void Polling::doClose()
   var self = this;
 
   function close () {
-    debug('writing close packet');
+    debug("writing close packet");
     self.write([{ type: "close" }]);
   }
 
   if ("open" == this.readyState) {
-    debug('transport open - closing');
+    debug("transport open - closing");
     close();
   } else {
     // in case we're trying to close while
     // handshaking is in progress (GH-164)
-    debug('transport not open - deferring close');
+    debug("transport not open - deferring close");
     this.once("open", close);
   }
 };
