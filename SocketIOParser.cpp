@@ -43,15 +43,17 @@ Encoder::~Encoder()
 
 }
 
-Value Encoder::encode(const SocketIOPacket& obj)
+ValueArray Encoder::encode(const SocketIOPacket& obj)
 {
-  debug("encoding packet %s", obj.toString().c_str());
+  debug("encoding packet %s\n", obj.toString().c_str());
 
   if (SocketIOPacket::Type::BINARY_EVENT == obj.type || SocketIOPacket::Type::BINARY_ACK == obj.type) {
     return encodeAsBinary(obj);
   }
   else {
-    return encodeAsString(obj);
+      ValueArray arr;
+      arr.push_back(encodeAsString(obj));
+    return arr;
   }
 }
 
@@ -95,7 +97,7 @@ std::string Encoder::encodeAsString(const SocketIOPacket& obj)
   return str;
 }
 
-Value Encoder::encodeAsBinary(const SocketIOPacket& obj)
+ValueArray Encoder::encodeAsBinary(const SocketIOPacket& obj)
 {
     binary::DeconstructedPacket deconstruction = binary::deconstructPacket(obj);
     std::string pack = encodeAsString(deconstruction.packet);

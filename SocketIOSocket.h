@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IOTypes.h"
+#include "Emitter.h"
 
 class SocketIOManager;
 
@@ -14,7 +14,7 @@ public:
      * @api public
      */
 
-    SocketIOSocket(SocketIOManager* io, const std::string& nsp, const Opts& opts);
+    SocketIOSocket(std::shared_ptr<SocketIOManager> io, const std::string& nsp, const Opts& opts);
 
     /**
      * "Opens" the socket.
@@ -50,9 +50,11 @@ public:
      */
     void setCompress(bool compress);
 
+    void setId(const std::string& id) { _id = id; }
     const std::string& getId() const { return _id; }
 
-    virtual void emit(const std::string& eventName, Args& args) override;
+    virtual void emit(const Value& args) override;
+    virtual void emit(const std::string& eventName, const Value& args) override;
 
 private:
 
@@ -78,7 +80,7 @@ private:
      *
      * @api private
      */
-    void onopen();
+    void onopen(const Value& v);
 
     /**
      * Called upon engine `close`.
@@ -87,7 +89,7 @@ private:
      * @api private
      */
 
-    void onclose(const std::string& reason);
+    void onclose(const Value& reason);
 
     /**
      * Called with socket packet.
@@ -96,7 +98,7 @@ private:
      * @api private
      */
 
-    void onpacket(const SocketIOPacket& packet);
+    void onpacket(const Value& packet);
 
     /**
      * Called upon a server event.
@@ -105,7 +107,7 @@ private:
      * @api private
      */
 
-    void onevent(const SocketIOPacket& packet);
+    void onevent(const Value& packet);
 
     /**
      * Produces an ack callback to emit with an event.
@@ -122,7 +124,7 @@ private:
      * @api private
      */
 
-    void onack(const SocketIOPacket& packet);
+    void onack(const Value& packet);
 
     /**
      * Called upon server connect.
@@ -157,8 +159,6 @@ private:
      */
 
     void destroy();
-
-    void setId(const std::string& id) { _id = id; }
 
 private:
     std::shared_ptr<SocketIOManager> _io;

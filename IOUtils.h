@@ -1,15 +1,14 @@
 #pragma once
 
+#include "IOTypes.h"
+
 #include <functional>
 #include <sstream>
-
 #include <stdint.h>
-
-using ListenerId = uint64_t;
 
 ListenerId grabListenerId(ListenerId* id = nullptr);
 
-using TimerHandle = uint64_t;
+#define ID grabListenerId
 
 TimerHandle setTimeout(const std::function<void()>& cb, long milliseconds);
 void clearTimeout(TimerHandle);
@@ -21,3 +20,9 @@ std::string toString(T v)
     ss << v;
     return ss.str();
 }
+
+std::string utf8Encode(const std::string& str);
+std::string utf8Decode(const std::string& str);
+
+std::string base64Encode(const Buffer& buf);
+Buffer base64Decode(const std::string& str);

@@ -1,26 +1,26 @@
 #pragma once
 
-#include <string>
+#include "Emitter.h"
 
-namespace socketio { namespace transport {
+//namespace socketio { namespace transport {
 
-class Transport : public Emitter
+class EngineIOTransport : public Emitter
 {
 public:
-    virtual ~Transport();
+    virtual ~EngineIOTransport();
 
     bool init(const Opts& opts);
 
     bool open();
     void close();
-    bool send(const std::vector<Packet>& packets);
+    bool send(const std::vector<EngineIOPacket>& packets);
     bool isWritable() const { return _writable; }
 
     virtual void onOpen();
     virtual void onClose();
     virtual void onError(const std::string& msg, const std::string& desc);
-    virtual void onData(const Data& data);
-    virtual void onPacket(const Packet& packet);
+    virtual void onData(const Value& data);
+    virtual void onPacket(const EngineIOPacket& packet);
 
     /**
      * Writes a packets payload.
@@ -29,7 +29,7 @@ public:
      * @param {Function} drain callback
      * @api private
      */
-    virtual bool write(const std::vector<Packet>& packets) = 0;
+    virtual bool write(const std::vector<EngineIOPacket>& packets) = 0;
     virtual bool doOpen() = 0;
     virtual void doClose() = 0;
     virtual const std::string& getName() const = 0;
@@ -63,6 +63,6 @@ private:
     std::string _localAddress;
 
     bool _writable;
-}
+};
 
-}} // namespace socketio { namespace transport {
+//}} // namespace socketio { namespace transport {

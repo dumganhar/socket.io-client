@@ -17,6 +17,11 @@ void Emitter::on(const std::string& eventName, const std::function<void(const Va
   _callbacks[eventName].push_back(std::move(cb));
 }
 
+void Emitter::on(const std::string& eventName, const std::function<void(const Value&)>& fn)
+{
+    Callback cb(fn, ID());
+    _callbacks[eventName].push_back(std::move(cb));
+}
 
 void Emitter::once(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key)
 {
@@ -26,6 +31,17 @@ void Emitter::once(const std::string& eventName, const std::function<void(const 
   };
 
   on(eventName, cb, key);
+}
+
+void Emitter::once(const std::string& eventName, const std::function<void(const Value&)>& fn)
+{
+    ListenerId key = ID();
+    auto cb = [=](const Value& args) {
+        off(eventName, key);
+        fn(args);
+    };
+
+    on(eventName, cb, key);
 }
 
 void Emitter::offAll()
@@ -66,15 +82,50 @@ void Emitter::off(const std::string& eventName, int64_t key)
 
 void Emitter::emit(const std::string& eventName, const Value& args)
 {
-  auto iter = _callbacks.find(eventName);
-  if (iter != _callbacks.end())
-  {
-    std::vector<Callback> copied = iter->second;
-    for (const auto& cb : copied)
+    auto iter = _callbacks.find(eventName);
+    if (iter != _callbacks.end())
     {
-      cb.fn(args);
+        ValueArray arguments;
+        arguments.push_back(eventName);
+        if (args.getType() == Value::Type::ARRAY)
+        {
+            const ValueArray& arr = args.asArray();
+            arguments.reserve(arr.size() + 1);
+            arguments.insert(arguments.end(), arr.begin(), arr.end());
+        }
+        else
+        {
+            arguments.push_back(args);
+        }
+
+        std::vector<Callback> copied = iter->second;
+        for (const auto& cb : copied)
+        {
+            cb.fn(arguments);
+        }
     }
-  }
+}
+
+void Emitter::emit(const Value& args)
+{
+    if (args.getType() == Value::Type::ARRAY)
+    {
+        const ValueArray& arguments = args.asArray();
+        if (!arguments.empty())
+            return;
+
+        std::string eventName = arguments[0].asString();
+
+        auto iter = _callbacks.find(eventName);
+        if (iter != _callbacks.end())
+        {
+            std::vector<Callback> copied = iter->second;
+            for (const auto& cb : copied)
+            {
+                cb.fn(args);
+            }
+        }
+    }
 }
 
 const std::vector<Emitter::Callback>& Emitter::getListeners(const std::string& eventName) const
@@ -87,7 +138,7 @@ bool Emitter::hasListeners(const std::string& eventName) const
     return _callbacks.find(eventName) != _callbacks.end();
 }
 
-OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn, int64_t key)
+OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn, int64_t key)
 {
   obj->on(ev, fn, key);
   OnObj onObj;
@@ -97,7 +148,7 @@ OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::functio
   return onObj;
 }
 
-OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn)
+OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn)
 {
   int64_t key = grabListenerId();
   return on(obj, ev, fn, key);

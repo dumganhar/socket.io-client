@@ -1,6 +1,6 @@
 #include "EngineIOTransport.h"
 
-namespace socketio { namespace transport {
+//namespace socketio { namespace transport {
 
 /**
  * Transport abstract constructor.
@@ -9,33 +9,35 @@ namespace socketio { namespace transport {
  * @api private
  */
 
-bool Transport::init (const Opts& opts)
+bool EngineIOTransport::init (const Opts& opts)
 {
   _path = opts.path;
   _hostname = opts.hostname;
   _port = opts.port;
   _secure = opts.secure;
   _query = opts.query;
-  _timestampParam = opts.timestampParam;
-  _timestampRequests = opts.timestampRequests;
+//cjh  _timestampParam = opts.timestampParam;
+//  _timestampRequests = opts.timestampRequests;
   _readyState = ReadyState::NONE;
-  _agent = opts.agent || false;
-  _socket = opts.socket;
-  _enablesXDR = opts.enablesXDR;
+//  _agent = opts.agent || false;
+//  _socket = opts.socket;
+//  _enablesXDR = opts.enablesXDR;
 
   // SSL options for Node.js client
-  _pfx = opts.pfx;
-  _key = opts.key;
-  _passphrase = opts.passphrase;
-  _cert = opts.cert;
-  _ca = opts.ca;
-  _ciphers = opts.ciphers;
-  _rejectUnauthorized = opts.rejectUnauthorized;
-  _forceNode = opts.forceNode;
+//cjh  _pfx = opts.pfx;
+//  _key = opts.key;
+//  _passphrase = opts.passphrase;
+//  _cert = opts.cert;
+//  _ca = opts.ca;
+//  _ciphers = opts.ciphers;
+//  _rejectUnauthorized = opts.rejectUnauthorized;
+//  _forceNode = opts.forceNode;
 
   // other options for Node.js client
-  _extraHeaders = opts.extraHeaders;
-  _localAddress = opts.localAddress;
+//  _extraHeaders = opts.extraHeaders;
+//  _localAddress = opts.localAddress;
+
+    return true;
 }
 
 /**
@@ -46,12 +48,12 @@ bool Transport::init (const Opts& opts)
  * @api public
  */
 
-void Transport::onError(const std::string& msg, const std::string& desc)
+void EngineIOTransport::onError(const std::string& msg, const std::string& desc)
 {
-  var err = new Error(msg);
-  err.type = "TransportError";
-  err.description = desc;
-  emit("error", err);
+//cjh  var err = new Error(msg);
+//  err.type = "TransportError";
+//  err.description = desc;
+//  emit("error", err);
 }
 
 /**
@@ -60,7 +62,7 @@ void Transport::onError(const std::string& msg, const std::string& desc)
  * @api public
  */
 
-bool Transport::open()
+bool EngineIOTransport::open()
 {
   if (ReadyState::CLOSED == _readyState || ReadyState::NONE == _readyState) {
     _readyState = ReadyState::OPENING;
@@ -76,9 +78,9 @@ bool Transport::open()
  * @api private
  */
 
-void Transport::close()
+void EngineIOTransport::close()
 {
-  if (ReadyState::OPENING == _readyState || ReadyState::OPEN == _readyState) {
+  if (ReadyState::OPENING == _readyState || ReadyState::OPENED == _readyState) {
     doClose();
     onClose();
   }
@@ -91,9 +93,9 @@ void Transport::close()
  * @api private
  */
 
-bool Transport::send(const std::vector<Packet>& packets)
+bool EngineIOTransport::send(const std::vector<EngineIOPacket>& packets)
 {
-  if (ReadyState::OPEN == _readyState) {
+  if (ReadyState::OPENED == _readyState) {
       return write(packets);
   }
   return false;
@@ -105,9 +107,9 @@ bool Transport::send(const std::vector<Packet>& packets)
  * @api private
  */
 
-void Transport::onOpen()
+void EngineIOTransport::onOpen()
 {
-  _readyState = ReadyState::OPEN;
+  _readyState = ReadyState::OPENED;
   _writable = true;
   emit("open");
 }
@@ -119,19 +121,19 @@ void Transport::onOpen()
  * @api private
  */
 
-void Transport::onData(const Data& data)
+void EngineIOTransport::onData(const Value& data)
 {
-  Packet packet = parser::decodePacket(data, _socket.binaryType);
-  onPacket(packet);
+//  EngineIOPacket packet = decodePacket(data, _socket.binaryType);
+//  onPacket(packet);
 }
 
 /**
  * Called with a decoded packet.
  */
 
-void Transport::onPacket(const Packet& packet)
+void EngineIOTransport::onPacket(const EngineIOPacket& packet)
 {
-  emit("packet", packet);
+//cjh  emit("packet", packet);
 }
 
 /**
@@ -140,10 +142,10 @@ void Transport::onPacket(const Packet& packet)
  * @api private
  */
 
-void Transport::onClose()
+void EngineIOTransport::onClose()
 {
   _readyState = ReadyState::CLOSED;
   emit("close");
 }
 
-}} // namespace socketio { namespace transport {
+//}} // namespace socketio { namespace transport {

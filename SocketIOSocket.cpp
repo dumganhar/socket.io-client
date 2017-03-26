@@ -1,3 +1,7 @@
+#include "SocketIOSocket.h"
+#include "SocketIOManager.h"
+#include "IOUtils.h"
+
 /**
  * Internal events (blacklisted).
  * These events can't be emitted by the user.
@@ -22,7 +26,7 @@ static std::vector<std::string> __events = {
 };
 
 
-SocketIOSocket::SocketIOSocket(SocketIOManager* io, const std::string& nsp, const Opts& opts)
+SocketIOSocket::SocketIOSocket(std::shared_ptr<SocketIOManager> io, const std::string& nsp, const Opts& opts)
 {
   _io = io;
   _nsp = nsp;
@@ -32,19 +36,20 @@ SocketIOSocket::SocketIOSocket(SocketIOManager* io, const std::string& nsp, cons
   _sendBuffer.clear();
   _connected = false;
   _disconnected = true;
-  if (opts && opts.query) {
+  if (opts.isValid() && !opts.query.empty()) {
     _query = opts.query;
   }
-  if (_io->autoConnect) this.open();
+  if (_io->_autoConnect)
+      open();
 }
 
 void SocketIOSocket::subEvents()
 {
-  if (_subs) return;
+  if (_subs.empty()) return;
 
-  _subs.push_back(on(_io, "open", std::bind(SocketIOSocket::onopen, this)));
-  _subs.push_back(on(_io, "packet", std::bind(SocketIOSocket::onpacket, this)));
-  _subs.push_back(on(_io, "close", std::bind(SocketIOSocket::onclose, this)));
+  _subs.push_back(gon(_io, "open", std::bind(SocketIOSocket::onopen, this), ID()));
+  _subs.push_back(gon(_io, "packet", std::bind(SocketIOSocket::onpacket, this), ID()));
+  _subs.push_back(gon(_io, "close", std::bind(SocketIOSocket::onclose, this), ID()));
 }
 
 // connect
@@ -64,7 +69,12 @@ void SocketIOSocket::send(Args& args)
   emit("message", args);
 }
 
-void SocketIOSocket::emit(const std::string& eventName, Args& args)
+void SocketIOSocket::emit(const Value& args)
+{
+    //cjh
+}
+
+void SocketIOSocket::emit(const std::string& eventName, const Value& args)
 {
   if (__events.find(eventName) != __events.end())
   {
@@ -78,17 +88,29 @@ void SocketIOSocket::emit(const std::string& eventName, Args& args)
   } // binary
   SocketIOPacket packet;
   packet.type = parserType;
-  packet.eventName = eventName;
   packet.options["compress"] = _compress;
 
   // event ack callback
   if (args[args.size() - 1].isFunction()) {
     debug("emitting packet with ack id %d", _ids);
     _acks[_ids] = args.pop_back();
-    packet.setId(_ids++);
+    packet.id = _ids++;
   }
 
-  packet.data = args;
+    ValueArray arguments;
+    arguments.push_back(eventName);
+    if (args.getType() == Value::Type::ARRAY)
+    {
+        const ValueArray& arr = args.asArray();
+        arguments.reserve(arr.size() + 1);
+        arguments.insert(arguments.end(), arr.begin(), arr.end());
+    }
+    else
+    {
+        arguments.push_back(args);
+    }
+
+  packet.data = arguments;
 
   if (_connected) {
     sendPacket(packet);
@@ -103,7 +125,7 @@ void SocketIOSocket::sendPacket(const SocketIOPacket& packet)
   _io->sendPacket(packet);
 }
 
-void SocketIOSocket::onopen()
+void SocketIOSocket::onopen(const Value& v)
 {
   debug("transport is open - connecting");
 
@@ -121,7 +143,7 @@ void SocketIOSocket::onopen()
   }
 }
 
-void SocketIOSocket::onclose(const std::string& reason)
+void SocketIOSocket::onclose(const Value& reason)
 {
   debug("close (%s)", reason);
   _connected = false;
@@ -130,13 +152,13 @@ void SocketIOSocket::onclose(const std::string& reason)
   emit("disconnect", reason);
 }
 
-void SocketIOSocket::onpacket(const SocketIOPacket& packet)
+void SocketIOSocket::onpacket(const Value& packet)
 {
   if (packet.nsp != _nsp) return;
 
   switch (packet.getType()) {
     case SocketIOPacket::Type::CONNECT:
-      onconnect();
+          onconnect(Value::NONE);
       break;
 
     case SocketIOPacket::Type::EVENT:
@@ -165,7 +187,7 @@ void SocketIOSocket::onpacket(const SocketIOPacket& packet)
   }
 }
 
-void SocketIOSocket::onevent(const SocketIOPacket& packet)
+void SocketIOSocket::onevent(const Value& packet)
 {
   Value& args = packet.data;
   debug("emitting event %s", args.toString().c_str());
@@ -202,7 +224,7 @@ ValueFunction SocketIOSocket::ack(int id)
   };
 }
 
-void SocketIOSocket::onack(const SocketIOPacket& packet)
+void SocketIOSocket::onack(const Value& packet)
 {
   auto iter = _acks.find(packet.getId());
   if (iter != _acks.end()) {
@@ -231,7 +253,7 @@ void SocketIOSocket::emitBuffered()
 
   _receiveBuffer.clear();
 
-  for (i = 0; i < _sendBuffer.length; i++) {
+  for (i = 0; i < _sendBuffer.size(); i++) {
     sendPacket(_sendBuffer[i]);
   }
   _sendBuffer.clear();

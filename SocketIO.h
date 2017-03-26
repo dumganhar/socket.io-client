@@ -1,5 +1,9 @@
 #pragma once
 
+#include "IOTypes.h"
+
+class SocketIOSocket;
+
 class SocketIO
 {
 public:
@@ -16,12 +20,12 @@ public:
      * @api public
      */
 
-    static SocketIOSocket* connect(const std::string& uri, const Opts& opts);
+    static std::shared_ptr<SocketIOSocket> connect(const std::string& uri, const Opts& opts);
 
     /**
      * Protocol version.
      *
      * @api public
      */
-    static int getProtocolVersion() const;
+    static int getProtocolVersion();
 };

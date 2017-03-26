@@ -1,5 +1,9 @@
 #pragma once
 
+#include "Emitter.h"
+
+class EngineIOTransport;
+
 class EngineIOSocket : public Emitter
 {
 public:
@@ -28,7 +32,7 @@ public:
      * @return {Socket} for chaining.
      * @api public
      */
-    void send(const Value& msg, const Opts& options, const std::function<void()>& fn);
+    void send(const Value& msg, const Opts& options, const std::function<void()>& fn = nullptr);
 
     const std::string& getId() const { return _id; }
 
@@ -38,6 +42,13 @@ public:
      * @api public
      */
     void onOpen();
+
+    /**
+     * Closes the connection.
+     *
+     * @api private
+     */
+    void close();
 
 private:
 
@@ -54,7 +65,7 @@ private:
      * @api private
      */
 
-    void setTransport(std::shared_ptr<Transport> transport);
+    void setTransport(std::shared_ptr<EngineIOTransport> transport);
 
     /**
      * Creates transport of the given type.
@@ -64,7 +75,7 @@ private:
      * @api private
      */
 
-    std::shared_ptr<Transport> createTransport(const std::string& name);
+    std::shared_ptr<EngineIOTransport> createTransport(const std::string& name);
 
     /**
      * Probes a transport.
@@ -94,12 +105,6 @@ private:
     void sendPacket(const std::string& type, const Value& data, const Opts& options, const std::function<void()>& fn);
 
     /**
-     * Closes the connection.
-     *
-     * @api private
-     */
-    void close();
-    /**
      * Called upon transport close.
      *
      * @api private
@@ -122,7 +127,7 @@ private:
      * @api private
      */
 
-    void onPacket(const Packet& packet);
+    void onPacket(const EngineIOPacket& packet);
 
     /**
      * Called upon handshake completion.
@@ -131,7 +136,7 @@ private:
      * @api private
      */
 
-    void onHandshake(const Data& data);
+    void onHandshake(const Value& data);
 
     /**
      * Resets ping timeout.
@@ -172,9 +177,9 @@ private:
     std::vector<std::string> _transports;
     std::vector<std::string> _upgrades;
 
-    std::vector<Packet> _writeBuffer;
+    std::vector<EngineIOPacket> _writeBuffer;
 
-    std::shared_ptr<Transport> _transport;
+    std::shared_ptr<EngineIOTransport> _transport;
     ReadyState _readyState;
     bool _rememberUpgrade;
     bool _upgrading;

@@ -19,3 +19,22 @@ void clearTimeout(TimerHandle)
 
 }
 
+std::string utf8Encode(const std::string& str)
+{
+    return "";
+}
+
+std::string utf8Decode(const std::string& str)
+{
+    return "";
+}
+
+std::string base64Encode(const Buffer& buf)
+{
+    return "";
+}
+
+Buffer base64Decode(const std::string& str)
+{
+    return Buffer(nullptr, 0);
+}

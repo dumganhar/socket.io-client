@@ -21,7 +21,7 @@ public:
      * @return Calls callback with Array of encodings
      * @api public
      */
-    Value encode(const SocketIOPacket& obj);
+    ValueArray encode(const SocketIOPacket& obj);
 
 private:
 
@@ -45,7 +45,7 @@ private:
      * @api private
      */
 
-    Value encodeAsBinary(const SocketIOPacket& obj);
+    ValueArray encodeAsBinary(const SocketIOPacket& obj);
 };
 
 class BinaryReconstructor;

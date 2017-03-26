@@ -1,12 +1,16 @@
+#include "SocketIO.h"
+
+#include "SocketIOManager.h"
+
 /**
  * Managers cache.
  */
 
 static std::unordered_map<std::string, SocketIOSocket*> __cache;
 
-SocketIOSocket* SocketIO::connect(const std::string& uri, const Opts& opts)
+std::shared_ptr<SocketIOSocket> SocketIO::connect(const std::string& uri, const Opts& opts)
 {
-  opts = opts || {};
+//  opts = opts || {};
 
   var parsed = url(uri);
   std::string source = parsed.source;
@@ -17,14 +21,14 @@ SocketIOSocket* SocketIO::connect(const std::string& uri, const Opts& opts)
   bool newConnection = opts.forceNew || opts["force new connection"] ||
                       false == opts.multiplex || sameNamespace;
 
-  SocketIOManager* io = nullptr;
+  std::shared_ptr<SocketIOSocket> io;
 
   if (newConnection) {
-    debug("ignoring socket cache for %s", source);
+    debug("ignoring socket cache for %s", source.c_str());
     io = new SocketIOManager(source, opts);
   } else {
     if (!foundIdInCache) {
-      debug("new io instance for %s", source);
+      debug("new io instance for %s", source.c_str());
       __cache.emplace(id, new SocketIOManager(source, opts));
     }
     io = __cache[id];

@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 Buffer::Buffer()
 : _data(nullptr)
@@ -12,12 +13,19 @@ Buffer::Buffer()
 
 }
 
-Buffer::Buffer(uint8_t* data, size_t len)
+Buffer::Buffer(const uint8_t* data, size_t len)
 : _len(len)
 , _isBinary(true)
 {
-    _data = (uint8_t*) malloc(_len);
-    memcpy(_data, data, len);
+    if (_len > 0)
+    {
+        _data = (uint8_t*) malloc(_len);
+        if (data) {
+            memcpy(_data, data, _len);
+        } else {
+            memset(_data, 0, _len);
+        }
+    }
 }
 
 Buffer::Buffer(const char* str)
@@ -107,7 +115,7 @@ Buffer& Buffer::operator=(Buffer&& o)
     return *this;
 }
 
-uint8_t Buffer::operator[](int index)
+uint8_t Buffer::operator[](int index) const
 {
     return _data[index];
 }
@@ -136,9 +144,25 @@ bool Buffer::isBinary() const
 {
     return _isBinary;
 }
+
+std::string Buffer::toBase64String() const
+{
+    return "";
+}
+
+void Buffer::setData(off_t offset, const uint8_t* data, size_t len)
+{
+    if (offset + len > _len)
+    {
+        return;
+    }
+
+    memcpy(_data + offset, data, len);
+}
+
 ///
 
-static const std::string EMPTY_STRING;
+Value Value::NONE = Value();
 
 Value::Type Value::getType() const
 {
@@ -161,6 +185,9 @@ Value::Value(const Value& o)
             break;
         case Type::BINARY:
             _u.buf = new Buffer(*o._u.buf);
+            break;
+        case Type::BOOLEAN:
+            _u.b = o._u.b;
             break;
         case Type::INTEGER:
             _u.i = o._u.i;
@@ -185,50 +212,74 @@ Value::Value(const Value& o)
     }
 }
 
+Value::Value(const char* str)
+{
+    if (_type != Type::STRING)
+        reset();
+    _type = Type::STRING;
+    _u.str = new std::string(str);
+}
+
 Value::Value(const std::string& str)
 {
+    if (_type != Type::STRING)
+        reset();
     _type = Type::STRING;
     _u.str = new std::string(str);
 }
 
 Value::Value(const Buffer& buf)
 {
+    if (_type != Type::BINARY)
+        reset();
     _type = Type::BINARY;
     _u.buf = new Buffer(buf);
 }
 
 Value::Value(bool v)
 {
+    if (_type != Type::BOOLEAN)
+        reset();
     _type = Type::BOOLEAN;
     _u.b = v;
 }
 
 Value::Value(int intVal)
 {
+    if (_type != Type::INTEGER)
+        reset();
     _type = Type::INTEGER;
     _u.i = intVal;
 }
 
 Value::Value(float floatVal)
 {
+    if (_type != Type::FLOAT)
+        reset();
     _type = Type::FLOAT;
     _u.i = floatVal;
 }
 
 Value::Value(const ValueArray& arrVal)
 {
+    if (_type != Type::ARRAY)
+        reset();
     _type = Type::ARRAY;
     _u.arr = new ValueArray(arrVal);
 }
 
 Value::Value(const ValueObject& objVal)
 {
+    if (_type != Type::OBJECT)
+        reset();
     _type = Type::OBJECT;
     _u.obj = new ValueObject(objVal);
 }
 
 Value::Value(const SocketIOPacket& packet)
 {
+    if (_type != Type::PACKET)
+        reset();
     _type = Type::PACKET;
     _u.packet = new SocketIOPacket(packet);
 }
@@ -276,6 +327,13 @@ Value& Value::operator=(const Value& o)
                 break;
         }
     }
+    return *this;
+}
+
+Value& Value::operator=(const char* str)
+{
+    _type = Type::STRING;
+    _u.str = new std::string(str);
     return *this;
 }
 
@@ -453,7 +511,57 @@ void Value::reset()
 
 std::string Value::toString() const
 {
-    return "";
+    std::stringstream ss;
+
+    switch (_type)
+    {
+        case Type::STRING:
+            ss << *_u.str;
+            break;
+        case Type::BINARY:
+            ss << "(Buffer: " << _u.buf->length() << ")";
+            break;
+        case Type::BOOLEAN:
+            ss << (_u.b ? "true" : "false");
+            break;
+        case Type::INTEGER:
+            ss << _u.i;
+            break;
+        case Type::FLOAT:
+            ss << _u.f;
+            break;
+        case Type::ARRAY:
+        {
+            ss << "[ ";
+            for (const auto& e : *_u.arr)
+            {
+                ss << e.toString() << ", ";
+            }
+            ss << " ]";
+        }
+            break;
+        case Type::OBJECT:
+        {
+            ss << "{ ";
+            for (const auto& e : *_u.obj)
+            {
+                ss << e.first << ": " << e.second.toString() << ", ";
+            }
+            ss << " }";
+        }
+            break;
+        case Type::FUNCTION:
+            ss << "Function";
+            break;
+        case Type::PACKET:
+            ss << "Packet";
+            break;
+        default:
+            assert(false);
+            break;
+    }
+
+    return ss.str();
 }
 
 //////
@@ -468,7 +576,6 @@ SocketIOPacket::SocketIOPacket()
 SocketIOPacket::SocketIOPacket(const SocketIOPacket& o)
 {
     id = o.id;
-    eventName = o.eventName;
     nsp = o.nsp;
     type = o.type;
     query = o.query;
@@ -480,7 +587,6 @@ SocketIOPacket::SocketIOPacket(const SocketIOPacket& o)
 SocketIOPacket::SocketIOPacket(SocketIOPacket&& o)
 {
     id = o.id;
-    eventName = o.eventName;
     nsp = o.nsp;
     type = o.type;
     query = o.query;
@@ -501,7 +607,6 @@ SocketIOPacket& SocketIOPacket::operator=(const SocketIOPacket& o)
     if (this != &o)
     {
         id = o.id;
-        eventName = o.eventName;
         nsp = o.nsp;
         type = o.type;
         query = o.query;
@@ -517,7 +622,6 @@ SocketIOPacket& SocketIOPacket::operator=(SocketIOPacket&& o)
     if (this != &o)
     {
         id = o.id;
-        eventName = o.eventName;
         nsp = o.nsp;
         type = o.type;
         query = o.query;
@@ -537,7 +641,6 @@ bool SocketIOPacket::isValid() const
 
 void SocketIOPacket::reset()
 {
-    eventName.clear();
     nsp.clear();
     type = Type::ERROR;
     query.clear();
@@ -548,5 +651,10 @@ void SocketIOPacket::reset()
 
 std::string SocketIOPacket::toString() const
 {
-    return "";
+    return data.toString();
 }
+
+/**
+ * Premade error packet.
+ */
+Value EngineIOPacket::ERROR = {"error", "parser error"};

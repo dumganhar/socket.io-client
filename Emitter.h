@@ -17,6 +17,7 @@ public:
      * @api public
      */
     virtual void on(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key);
+    virtual void on(const std::string& eventName, const std::function<void(const Value&)>& fn);
     /**
      * Adds an `event` listener that will be invoked a single
      * time then automatically removed.
@@ -27,6 +28,7 @@ public:
      * @api public
      */
     virtual void once(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key);
+    virtual void once(const std::string& eventName, const std::function<void(const Value&)>& fn);
 
     /**
      * Remove the given callback for `event` or all
@@ -51,7 +53,7 @@ public:
      */
 
     virtual void emit(const std::string& eventName, const Value& args);
-
+    virtual void emit(const Value& args);
 
     struct Callback
     {
@@ -106,5 +108,5 @@ struct OnObj
  * @api public
  */
 
-OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn, int64_t key);
-OnObj on(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn);
+OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn, int64_t key);
+OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn);

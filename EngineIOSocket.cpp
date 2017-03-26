@@ -1,103 +1,105 @@
-
+#include "EngineIOSocket.h"
+#include "EngineIOParser.h"
+#include "IOUtils.h"
 
 static bool __priorWebsocketSuccess = false;
 
 EngineIOSocket::EngineIOSocket(const std::string& uri, const Opts& opts)
 {
-  opts = opts || {};
+//cjh  opts = opts || {};
+//
+//  if (uri && "object" == typeof uri) {
+//    opts = uri;
+//    uri = null;
+//  }
+//
+//  if (uri) {
+//    uri = parseuri(uri);
+//    opts.hostname = uri.host;
+//    opts.secure = uri.protocol == "https' || uri.protocol == 'wss";
+//    opts.port = uri.port;
+//    if (uri.query) opts.query = uri.query;
+//  } else if (opts.host) {
+//    opts.hostname = parseuri(opts.host).host;
+//  }
+//
+//  this.secure = null != opts.secure ? opts.secure
+//    : (global.location && "https:" == location.protocol);
+//
+//  if (opts.hostname && !opts.port) {
+//    // if no port is specified manually, use the protocol default
+//    opts.port = this.secure ? "443' : '80";
+//  }
+//
+//  this.agent = opts.agent || false;
+//  this.hostname = opts.hostname ||
+//    (global.location ? location.hostname : "localhost");
+//  this.port = opts.port || (global.location && location.port
+//      ? location.port
+//      : (this.secure ? 443 : 80));
+//  this.query = opts.query || {};
+//  if ("string" == typeof this.query) this.query = parseqs.decode(this.query);
+//  _upgrade = false != opts.upgrade;
+//  this.path = (opts.path || "/engine.io').replace(/\/$/, '') + '/";
+//  this.forceJSONP = !!opts.forceJSONP;
+//  this.jsonp = false != opts.jsonp;
+//  this.forceBase64 = !!opts.forceBase64;
+//  this.enablesXDR = !!opts.enablesXDR;
+//  this.timestampParam = opts.timestampParam || "t";
+//  this.timestampRequests = opts.timestampRequests;
+//  _transports = opts.transports || ["polling', 'websocket"];
+//  _readyState = ReadyState::NONE;
+//  _writeBuffer.clear();
+//  _prevBufferLen = 0;
+//  this.policyPort = opts.policyPort || 843;
+//  _rememberUpgrade = opts.rememberUpgrade || false;
+//  this.binaryType = null;
+//  this.onlyBinaryUpgrades = opts.onlyBinaryUpgrades;
+//  this.perMessageDeflate = false != opts.perMessageDeflate ? (opts.perMessageDeflate || {}) : false;
+//
+//  if (true == this.perMessageDeflate) this.perMessageDeflate = {};
+//  if (this.perMessageDeflate && null == this.perMessageDeflate.threshold) {
+//    this.perMessageDeflate.threshold = 1024;
+//  }
+//
+//  // SSL options for Node.js client
+//  this.pfx = opts.pfx || null;
+//  this.key = opts.key || null;
+//  this.passphrase = opts.passphrase || null;
+//  this.cert = opts.cert || null;
+//  this.ca = opts.ca || null;
+//  this.ciphers = opts.ciphers || null;
+//  this.rejectUnauthorized = opts.rejectUnauthorized == undefined ? null : opts.rejectUnauthorized;
+//  this.forceNode = !!opts.forceNode;
+//
+//  // other options for Node.js client
+//  var freeGlobal = typeof global == "object" && global;
+//  if (freeGlobal.global == freeGlobal) {
+//    if (opts.extraHeaders && Object.keys(opts.extraHeaders).length > 0) {
+//      this.extraHeaders = opts.extraHeaders;
+//    }
+//
+//    if (opts.localAddress) {
+//      this.localAddress = opts.localAddress;
+//    }
+//  }
+//
+//  // set on handshake
+//  _id = "";
+//  _upgrades = null;
+//  this.pingInterval = null;
+//  this.pingTimeout = null;
+//
+//  // set on heartbeat
+//  this.pingIntervalTimer = null;
+//  this.pingTimeoutTimer = null;
 
-  if (uri && "object" == typeof uri) {
-    opts = uri;
-    uri = null;
-  }
-
-  if (uri) {
-    uri = parseuri(uri);
-    opts.hostname = uri.host;
-    opts.secure = uri.protocol == "https' || uri.protocol == 'wss";
-    opts.port = uri.port;
-    if (uri.query) opts.query = uri.query;
-  } else if (opts.host) {
-    opts.hostname = parseuri(opts.host).host;
-  }
-
-  this.secure = null != opts.secure ? opts.secure
-    : (global.location && "https:" == location.protocol);
-
-  if (opts.hostname && !opts.port) {
-    // if no port is specified manually, use the protocol default
-    opts.port = this.secure ? "443' : '80";
-  }
-
-  this.agent = opts.agent || false;
-  this.hostname = opts.hostname ||
-    (global.location ? location.hostname : "localhost");
-  this.port = opts.port || (global.location && location.port
-      ? location.port
-      : (this.secure ? 443 : 80));
-  this.query = opts.query || {};
-  if ("string" == typeof this.query) this.query = parseqs.decode(this.query);
-  _upgrade = false != opts.upgrade;
-  this.path = (opts.path || "/engine.io').replace(/\/$/, '') + '/";
-  this.forceJSONP = !!opts.forceJSONP;
-  this.jsonp = false != opts.jsonp;
-  this.forceBase64 = !!opts.forceBase64;
-  this.enablesXDR = !!opts.enablesXDR;
-  this.timestampParam = opts.timestampParam || "t";
-  this.timestampRequests = opts.timestampRequests;
-  _transports = opts.transports || ["polling', 'websocket"];
-  _readyState = ReadyState::NONE;
-  _writeBuffer.clear();
-  _prevBufferLen = 0;
-  this.policyPort = opts.policyPort || 843;
-  _rememberUpgrade = opts.rememberUpgrade || false;
-  this.binaryType = null;
-  this.onlyBinaryUpgrades = opts.onlyBinaryUpgrades;
-  this.perMessageDeflate = false != opts.perMessageDeflate ? (opts.perMessageDeflate || {}) : false;
-
-  if (true == this.perMessageDeflate) this.perMessageDeflate = {};
-  if (this.perMessageDeflate && null == this.perMessageDeflate.threshold) {
-    this.perMessageDeflate.threshold = 1024;
-  }
-
-  // SSL options for Node.js client
-  this.pfx = opts.pfx || null;
-  this.key = opts.key || null;
-  this.passphrase = opts.passphrase || null;
-  this.cert = opts.cert || null;
-  this.ca = opts.ca || null;
-  this.ciphers = opts.ciphers || null;
-  this.rejectUnauthorized = opts.rejectUnauthorized == undefined ? null : opts.rejectUnauthorized;
-  this.forceNode = !!opts.forceNode;
-
-  // other options for Node.js client
-  var freeGlobal = typeof global == "object" && global;
-  if (freeGlobal.global == freeGlobal) {
-    if (opts.extraHeaders && Object.keys(opts.extraHeaders).length > 0) {
-      this.extraHeaders = opts.extraHeaders;
-    }
-
-    if (opts.localAddress) {
-      this.localAddress = opts.localAddress;
-    }
-  }
-
-  // set on handshake
-  _id = "";
-  _upgrades = null;
-  this.pingInterval = null;
-  this.pingTimeout = null;
-
-  // set on heartbeat
-  this.pingIntervalTimer = null;
-  this.pingTimeoutTimer = null;
-
-  this.open();
+  open();
 }
 
 int EngineIOSocket::getProtocolVersion() const
 {
-    return parser::getProtocolVersion();
+    return engineio::parser::getProtocolVersion();
 }
 
 /**
@@ -108,60 +110,62 @@ int EngineIOSocket::getProtocolVersion() const
  * @api private
  */
 
-std::shared_ptr<Transport> EngineIOSocket::createTransport(const std::string& name)
+std::shared_ptr<EngineIOTransport> EngineIOSocket::createTransport(const std::string& name)
 {
-  debug("creating transport "%s"", name);
-  var query = clone(this.query);
+  debug("creating transport %s", name.c_str());
+//  var query = clone(this.query);
+//
+//  // append engine.io protocol identifier
+//  query.EIO = parser.protocol;
+//
+//  // transport name
+//  query.transport = name;
+//
+//  // session id if we already have one
+//  if (_id) query.sid = _id;
+//
+//  var transport = new transports[name]({
+//    agent: this.agent,
+//    hostname: this.hostname,
+//    port: this.port,
+//    secure: this.secure,
+//    path: this.path,
+//    query: query,
+//    forceJSONP: this.forceJSONP,
+//    jsonp: this.jsonp,
+//    forceBase64: this.forceBase64,
+//    enablesXDR: this.enablesXDR,
+//    timestampRequests: this.timestampRequests,
+//    timestampParam: this.timestampParam,
+//    policyPort: this.policyPort,
+//    socket: this,
+//    pfx: this.pfx,
+//    key: this.key,
+//    passphrase: this.passphrase,
+//    cert: this.cert,
+//    ca: this.ca,
+//    ciphers: this.ciphers,
+//    rejectUnauthorized: this.rejectUnauthorized,
+//    perMessageDeflate: this.perMessageDeflate,
+//    extraHeaders: this.extraHeaders,
+//    forceNode: this.forceNode,
+//    localAddress: this.localAddress
+//  });
+//
+//  return transport;
 
-  // append engine.io protocol identifier
-  query.EIO = parser.protocol;
-
-  // transport name
-  query.transport = name;
-
-  // session id if we already have one
-  if (_id) query.sid = _id;
-
-  var transport = new transports[name]({
-    agent: this.agent,
-    hostname: this.hostname,
-    port: this.port,
-    secure: this.secure,
-    path: this.path,
-    query: query,
-    forceJSONP: this.forceJSONP,
-    jsonp: this.jsonp,
-    forceBase64: this.forceBase64,
-    enablesXDR: this.enablesXDR,
-    timestampRequests: this.timestampRequests,
-    timestampParam: this.timestampParam,
-    policyPort: this.policyPort,
-    socket: this,
-    pfx: this.pfx,
-    key: this.key,
-    passphrase: this.passphrase,
-    cert: this.cert,
-    ca: this.ca,
-    ciphers: this.ciphers,
-    rejectUnauthorized: this.rejectUnauthorized,
-    perMessageDeflate: this.perMessageDeflate,
-    extraHeaders: this.extraHeaders,
-    forceNode: this.forceNode,
-    localAddress: this.localAddress
-  });
-
-  return transport;
-};
-
-function clone (obj) {
-  var o = {};
-  for (var i in obj) {
-    if (obj.hasOwnProperty(i)) {
-      o[i] = obj[i];
-    }
-  }
-  return o;
+    return nullptr;
 }
+
+//cjh function clone (obj) {
+//  var o = {};
+//  for (var i in obj) {
+//    if (obj.hasOwnProperty(i)) {
+//      o[i] = obj[i];
+//    }
+//  }
+//  return o;
+//}
 
 void EngineIOSocket::open()
 {
@@ -180,11 +184,11 @@ void EngineIOSocket::open()
   _readyState = ReadyState::OPENING;
 
   // Retry with the next transport if the transport is disabled (jsonp: false)
-  std::shared_ptr<Transport> transport = createTransport(transportName);
+  std::shared_ptr<EngineIOTransport> transport = createTransport(transportName);
 
   if (transport == nullptr) {
     _transports.erase(_transports.begin())
-    this.open();
+    open();
     return;
   }
 

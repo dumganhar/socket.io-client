@@ -11,7 +11,7 @@ class Buffer
 {
 public:
     Buffer();
-    Buffer(uint8_t* data, size_t len);
+    Buffer(const uint8_t* data, size_t len);
     Buffer(const char* str);
     Buffer(const std::string& str);
     Buffer(const Buffer& o);
@@ -22,13 +22,17 @@ public:
     Buffer& operator=(const std::string& str);
     Buffer& operator=(const Buffer& o);
     Buffer& operator=(Buffer&& o);
-    uint8_t operator[](int index);
+    uint8_t operator[](int index) const;
 
     bool isValid() const;
     const uint8_t* data() const;
     size_t length() const;
     const char* c_str() const;
     bool isBinary() const;
+
+    void setData(off_t offset, const uint8_t* data, size_t len);
+
+    std::string toBase64String() const;
 
 private:
     uint8_t* _data;
@@ -46,6 +50,8 @@ using ValueFunction = std::function<void(const Value&)>;
 class Value
 {
 public:
+    static Value NONE;
+
     enum class Type
     {
         NONE,
@@ -64,17 +70,19 @@ public:
 
     Value();
     Value(const Value& o);
+    Value(const char* cstr);
     Value(const std::string& str);
     Value(const Buffer& buf);
-    Value(bool v);
-    Value(int intVal);
-    Value(float floatVal);
+    explicit Value(bool v);
+    explicit Value(int intVal);
+    explicit Value(float floatVal);
     Value(const ValueArray& arrVal);
     Value(const ValueObject& objVal);
     Value(const SocketIOPacket& packet);
     ~Value();
 
     Value& operator=(const Value& o);
+    Value& operator=(const char* o);
     Value& operator=(const std::string& o);
     Value& operator=(const Buffer& buf);
     Value& operator=(bool v);
@@ -120,9 +128,13 @@ using Args = ValueArray;
 class EngineIOPacket
 {
 public:
+    static EngineIOPacket NONE;
     static EngineIOPacket ERROR;
 
+    bool isValid() const;
+
     std::string type;
+    Value data;
 };
 
 class SocketIOPacket
@@ -182,7 +194,6 @@ public:
     std::string toString() const;
 
     int id;
-    std::string eventName;
     std::string nsp;
     Type type;
     std::string query;
@@ -214,7 +225,15 @@ struct Opts
     float randomizationFactor;// (Number) (0.5), 0 <= randomizationFactor <= 1
     int timeout;// (Number) connection timeout before a connect_error and connect_timeout events are emitted (20000)
     bool autoConnect;// (Boolean) by setting this false, you have to call manager.open whenever you decide it's appropriate
+    bool secure;
+    uint16_t port;
+    std::string hostname;
+
+    bool isValid() const;
 };
+
+using ListenerId = uint64_t;
+using TimerHandle = uint64_t;
 
 #define debug(...) printf(__VA_ARGS__)
 

@@ -2,6 +2,12 @@
 
 #include "Emitter.h"
 
+class SocketIOSocket;
+class EngineIOSocket;
+class Encoder;
+class Decoder;
+class Backoff;
+
 class SocketIOManager : public Emitter
 {
 public:
@@ -100,7 +106,7 @@ private:
      * @api private
      */
 
-    void emitAll(const std::string& eventName, Args& args);
+    void emitAll(const std::string& eventName, const Value& args = Value::NONE);
 
     /**
      * Starts trying to reconnect if reconnection is enabled and we have not
@@ -117,7 +123,7 @@ private:
      * @api private
      */
 
-    void onopen();
+    void onopen(const Value& unused);
 
     /**
      * Called upon a ping.
@@ -125,7 +131,7 @@ private:
      * @api private
      */
 
-    void onping();
+    void onping(const Value& unused);
 
     /**
      * Called upon a packet.
@@ -133,7 +139,7 @@ private:
      * @api private
      */
 
-    void onpong();
+    void onpong(const Value& unused);
 
     /**
      * Called with data.
@@ -149,7 +155,7 @@ private:
      * @api private
      */
 
-    void ondecoded(const SocketIOPacket& packet);
+    void ondecoded(const Value& packet);
 
     /**
      * Called upon socket error.
@@ -157,7 +163,7 @@ private:
      * @api private
      */
 
-    void onerror(const std::string& err);
+    void onerror(const Value& err);
 
     /**
      * Writes a packet.
@@ -166,7 +172,7 @@ private:
      * @api private
      */
 
-    void sendPacket(const SocketIOPacket& packet);
+    void sendPacket(SocketIOPacket& packet);
 
     /**
      * If packet buffer is non-empty, begins encoding the
@@ -227,6 +233,7 @@ private:
     void updateSocketIds();
 
 //
+private:
     Opts _opts;
     std::unordered_map<std::string, std::shared_ptr<SocketIOSocket>> _nsps;
     std::vector<std::shared_ptr<SocketIOSocket>> _connecting;
@@ -252,4 +259,6 @@ private:
     std::unique_ptr<Decoder> _decoder;
 
     std::unique_ptr<Backoff> _backoff;
+
+    friend class SocketIOSocket;
 };

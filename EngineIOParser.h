@@ -1,14 +1,13 @@
 #pragma once
 
-#include <unordered_map>
-#include <string>
+#include "IOTypes.h"
 
-namespace socketio { namespace parser {
+namespace engineio { namespace parser {
 
 /**
  * Current protocol version.
  */
-extern uint8_t protocol;
+uint8_t getProtocolVersion();
 
 
 
@@ -28,7 +27,7 @@ extern uint8_t protocol;
  * @api private
  */
 
-Data encodePacket(const Packet& packet, bool supportsBinary, bool utf8encode);
+Value encodePacket(const EngineIOPacket& packet, bool supportsBinary, bool utf8encode);
 
 /**
  * Decodes a packet. Data also available as an ArrayBuffer if requested.
@@ -37,7 +36,7 @@ Data encodePacket(const Packet& packet, bool supportsBinary, bool utf8encode);
  * @api private
  */
 
-Packet decodePacket(const Data& data, bool binaryType, bool utf8decode);
+EngineIOPacket decodePacket(const Value& data, bool utf8decode);
 
 
 /**
@@ -56,7 +55,7 @@ Packet decodePacket(const Data& data, bool binaryType, bool utf8decode);
  * @api private
  */
 
-Data encodePayload(const Packet& packet, bool supportsBinary);
+Value encodePayload(const EngineIOPacket& packet, bool supportsBinary);
 
 /*
  * Decodes data when a payload is maybe expected. Possible binary contents are
@@ -66,6 +65,6 @@ Data encodePayload(const Packet& packet, bool supportsBinary);
  * @api public
  */
 
-Packet decodePayload(const Data& data, bool binaryType);
+EngineIOPacket decodePayload(const Value& data);
 
-}} //namespace socketio { namespace parser {
+}} //namespace engineio { namespace parser {

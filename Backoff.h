@@ -61,6 +61,8 @@ public:
 
     void setJitter(float jitter);
 
+    int getAttempts() const { return _attempts; }
+
 private:
     long _ms;
     long _max;

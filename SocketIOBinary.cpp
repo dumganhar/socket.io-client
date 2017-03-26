@@ -43,6 +43,7 @@ DeconstructedPacket deconstructPacket(const SocketIOPacket& packet)
 
   DeconstructedPacket ret;
   ret.packet = pack;
+    debug("%s\n", pack.toString().c_str());
   ret.buffers = buffers;
   return ret;
 }
