@@ -151,5 +151,5 @@ OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::functi
 OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn)
 {
   int64_t key = grabListenerId();
-  return on(obj, ev, fn, key);
+  return gon(obj, ev, fn, key);
 }

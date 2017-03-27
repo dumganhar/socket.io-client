@@ -124,7 +124,7 @@ private:
      * @api private
      */
 
-    void onack(const Value& packet);
+    void onack(const SocketIOPacket& packet);
 
     /**
      * Called upon server connect.
@@ -167,7 +167,7 @@ private:
     std::string _id; // An unique identifier for the socket session. Set after the connect event is triggered, and updated after the reconnect event.
     int _ids;
     std::unordered_map<int, ValueFunction> _acks;
-    std::vector<Args> _receiveBuffer;
+    std::vector<Value> _receiveBuffer;
     std::vector<SocketIOPacket> _sendBuffer;
     std::vector<OnObj> _subs;
     bool _connected;

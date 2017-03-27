@@ -2,6 +2,8 @@
 #include "SocketIOManager.h"
 #include "IOUtils.h"
 
+#include <assert.h>
+
 /**
  * Internal events (blacklisted).
  * These events can't be emitted by the user.
@@ -47,9 +49,9 @@ void SocketIOSocket::subEvents()
 {
   if (_subs.empty()) return;
 
-  _subs.push_back(gon(_io, "open", std::bind(SocketIOSocket::onopen, this), ID()));
-  _subs.push_back(gon(_io, "packet", std::bind(SocketIOSocket::onpacket, this), ID()));
-  _subs.push_back(gon(_io, "close", std::bind(SocketIOSocket::onclose, this), ID()));
+  _subs.push_back(gon(_io, "open", std::bind(&SocketIOSocket::onopen, this, std::placeholders::_1)));
+  _subs.push_back(gon(_io, "packet", std::bind(&SocketIOSocket::onpacket, this, std::placeholders::_1)));
+  _subs.push_back(gon(_io, "close", std::bind(&SocketIOSocket::onclose, this, std::placeholders::_1)));
 }
 
 // connect
@@ -58,9 +60,9 @@ void SocketIOSocket::open()
   if (_connected) return;
 
   subEvents();
-  _io->open(); // ensure open
-  if (ReadyState::OPEN == _io->getReadyState())
-    onopen();
+  _io->connect(nullptr, Opts()); // ensure open
+  if (ReadyState::OPENED == _io->getReadyState())
+      onopen(Value::NONE);
   emit("connecting");
 }
 
@@ -76,38 +78,28 @@ void SocketIOSocket::emit(const Value& args)
 
 void SocketIOSocket::emit(const std::string& eventName, const Value& args)
 {
-  if (__events.find(eventName) != __events.end())
+  if (std::find(__events.begin(), __events.end(), eventName) != __events.end())
   {
     Emitter::emit(eventName, args);
     return;
   }
 
   SocketIOPacket::Type parserType = SocketIOPacket::Type::EVENT; // default
-  if (hasBin(args)) { 
+  if (args.hasBin()) {
     parserType = SocketIOPacket::Type::BINARY_EVENT;
   } // binary
   SocketIOPacket packet;
   packet.type = parserType;
   packet.options["compress"] = _compress;
 
-  // event ack callback
-  if (args[args.size() - 1].isFunction()) {
-    debug("emitting packet with ack id %d", _ids);
-    _acks[_ids] = args.pop_back();
-    packet.id = _ids++;
-  }
+  ValueArray arguments = Value::concat(eventName, args);
 
-    ValueArray arguments;
-    arguments.push_back(eventName);
-    if (args.getType() == Value::Type::ARRAY)
-    {
-        const ValueArray& arr = args.asArray();
-        arguments.reserve(arr.size() + 1);
-        arguments.insert(arguments.end(), arr.begin(), arr.end());
-    }
-    else
-    {
-        arguments.push_back(args);
+    // event ack callback
+    if (arguments[arguments.size() - 1].getType() == Value::Type::FUNCTION) {
+        debug("emitting packet with ack id %d", _ids);
+        _acks[_ids] = arguments[arguments.size() - 1].asFunction();
+        packet.id = _ids++;
+        arguments.pop_back();
     }
 
   packet.data = arguments;
@@ -154,7 +146,7 @@ void SocketIOSocket::onclose(const Value& reason)
 
 void SocketIOSocket::onpacket(const Value& v)
 {
-    const SocketIOPacket& packet = v.asPacket();
+  const SocketIOPacket& packet = v.asPacket();
   if (packet.nsp != _nsp) return;
 
   switch (packet.type) {
@@ -190,12 +182,13 @@ void SocketIOSocket::onpacket(const Value& v)
 
 void SocketIOSocket::onevent(const SocketIOPacket& packet)
 {
-  Value& args = const_cast<Value&>(packet.data);
-  debug("emitting event %s", args.toString().c_str());
+    const Value& args = packet.data;
+    debug("emitting event %s", args.toString().c_str());
 
+    ValueArray arguments;
   if (packet.id != -1) {
     debug("attaching ack callback to event");
-    args.push_back(ack(packet.id));
+    arguments = Value::concat(args, ack(packet.id));
   }
 
   if (_connected) {
@@ -208,32 +201,32 @@ void SocketIOSocket::onevent(const SocketIOPacket& packet)
 ValueFunction SocketIOSocket::ack(int id)
 {
   std::shared_ptr<bool> sent = std::make_shared<bool>(false);
-  return [this, sent](const Value& data) {
+  return [this, sent, id](const Value& data) {
     // prevent double callbacks
     if (*sent) return;
     *sent = true;
     debug("sending ack %s", data.toString().c_str());
 
-    SocketIOPacket::Type type = hasBin(data) ? SocketIOPacket::Type::BINARY_ACK : SocketIOPacket::Type::ACK;
+    SocketIOPacket::Type type = data.hasBin() ? SocketIOPacket::Type::BINARY_ACK : SocketIOPacket::Type::ACK;
 
     SocketIOPacket packet;
-    packet.setType(type);
-    packet.setId(id);
-    packet.setData(data);
+    packet.type = type;
+    packet.id = id;
+    packet.data = data;
 
     sendPacket(packet);
   };
 }
 
-void SocketIOSocket::onack(const Value& packet)
+void SocketIOSocket::onack(const SocketIOPacket& packet)
 {
-  auto iter = _acks.find(packet.getId());
+  auto iter = _acks.find(packet.id);
   if (iter != _acks.end()) {
-    debug("calling ack %s with %j", packet.id, packet.data);
+    debug("calling ack %d with %s", packet.id, packet.data.toString().c_str());
     iter->second(packet.data);
-    _acks.erase(packet.getId());
+    _acks.erase(packet.id);
   } else {
-    debug("bad ack %s", packet.id);
+    debug("bad ack %d", packet.id);
   }
 }
 
@@ -254,7 +247,7 @@ void SocketIOSocket::emitBuffered()
 
   _receiveBuffer.clear();
 
-  for (i = 0; i < _sendBuffer.size(); i++) {
+  for (size_t i = 0; i < _sendBuffer.size(); i++) {
     sendPacket(_sendBuffer[i]);
   }
   _sendBuffer.clear();
@@ -262,7 +255,7 @@ void SocketIOSocket::emitBuffered()
 
 void SocketIOSocket::ondisconnect()
 {
-  debug("server disconnect (%s)", _nsp);
+  debug("server disconnect (%s)", _nsp.c_str());
   destroy();
   onclose("io server disconnect");
 }
@@ -272,20 +265,22 @@ void SocketIOSocket::destroy()
   if (!_subs.empty()) {
     // clean subscriptions to avoid reconnections
     for (auto& sub : _subs) {
-      sub->destroy();
+      sub.destroy();
     }
     _subs.clear();
   }
 
-  _io->destroySocket(this);
+//cjh  _io->destroySocket(this);
 }
 
 // disconnect
 void SocketIOSocket::close()
 {
   if (_connected) {
-    debug("performing disconnect (%s)", _nsp);
-    sendPacket({ type: SocketIOPacket::Type::DISCONNECT });
+    debug("performing disconnect (%s)", _nsp.c_str());
+      SocketIOPacket packet;
+      packet.type = SocketIOPacket::Type::DISCONNECT;
+      sendPacket(packet);
   }
 
   // remove socket from pool

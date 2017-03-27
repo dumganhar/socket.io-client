@@ -489,10 +489,10 @@ void EngineIOSocket::sendPacket(const std::string& type, const Value& data, cons
 //  _writeBuffer.push_back(packet);
 //  if (fn) this.once("flush", fn);
 //  this.flush();
-//};
+}
 //
-//void EngineIOSocket::close()
-//{
+void EngineIOSocket::close()
+{
 //  auto closeTransport = []() {
 //    onClose("forced close");
 //    debug("socket closing - telling transport to close");

@@ -13,7 +13,7 @@ class Decoder;
 
 class Backoff;
 
-class SocketIOManager : public Emitter
+class SocketIOManager : public Emitter, public std::enable_shared_from_this<SocketIOManager>
 {
 public:
     SocketIOManager(const std::string& uri, const Opts& opts);
@@ -211,7 +211,7 @@ private:
      * @api private
      */
 
-    void onclose(const std::string& reason);
+    void onclose(const Value& reason);
 
     /**
      * Attempt a reconnection.
@@ -260,10 +260,10 @@ private:
 
     ReadyState _readyState;
 
-    std::unique_ptr<socketio::parser::Encoder> _encoder;
-    std::unique_ptr<socketio::parser::Decoder> _decoder;
+    std::shared_ptr<socketio::parser::Encoder> _encoder;
+    std::shared_ptr<socketio::parser::Decoder> _decoder;
 
-    std::unique_ptr<Backoff> _backoff;
+    std::shared_ptr<Backoff> _backoff;
 
     friend class SocketIOSocket;
 };

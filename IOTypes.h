@@ -79,6 +79,7 @@ public:
     Value(const ValueArray& arrVal);
     Value(const ValueObject& objVal);
     Value(const SocketIOPacket& packet);
+    Value(const ValueFunction& func);
     ~Value();
 
     Value& operator=(const Value& o);
@@ -91,6 +92,7 @@ public:
     Value& operator=(const ValueArray& arrVal);
     Value& operator=(const ValueObject& objVal);
     Value& operator=(const SocketIOPacket& packet);
+    Value& operator=(const ValueFunction& func);
 
     const std::string& asString() const;
     const Buffer& asBuffer() const;
@@ -100,12 +102,15 @@ public:
     const ValueArray& asArray() const;
     const ValueObject& asObject() const;
     const SocketIOPacket& asPacket() const;
+    const ValueFunction& asFunction() const;
 
     bool isValid() const;
     bool hasBin() const;
     void reset();
 
     std::string toString() const;
+
+    static ValueArray concat(const Value& a, const Value& b);
 
 private:
     union {

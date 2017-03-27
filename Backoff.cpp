@@ -1,12 +1,12 @@
-
+#include "Backoff.h"
 
 Backoff::Backoff(long min, long max, float jitter, int factor)
 {
-  opts = opts || {};
-  _ms = opts.min || 100;
-  _max = opts.max || 10000;
-  _factor = opts.factor || 2;
-  _jitter = opts.jitter > 0 && opts.jitter <= 1 ? opts.jitter : 0;
+    _ms = min;
+    _max = max;
+    _factor = factor;
+    _jitter = jitter;
+    _factor = factor;
   _attempts = 0;
 }
 
@@ -17,13 +17,15 @@ Backoff::~Backoff()
 
 long Backoff::getDuration()
 {
-  var ms = _ms * Math.pow(_factor, _attempts++);
-  if (_jitter) {
-    var rand =  Math.random();
-    var deviation = Math.floor(rand * _jitter * ms);
-    ms = (Math.floor(rand * 10) & 1) == 0  ? ms - deviation : ms + deviation;
-  }
-  return Math.min(ms, _max) | 0;
+//  var ms = _ms * Math.pow(_factor, _attempts++);
+//  if (_jitter) {
+//    var rand =  Math.random();
+//    var deviation = Math.floor(rand * _jitter * ms);
+//    ms = (Math.floor(rand * 10) & 1) == 0  ? ms - deviation : ms + deviation;
+//  }
+//  return Math.min(ms, _max) | 0;
+
+    return 0;
 }
 
 void Backoff::reset()

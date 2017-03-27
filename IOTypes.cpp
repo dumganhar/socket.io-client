@@ -214,74 +214,62 @@ Value::Value(const Value& o)
 
 Value::Value(const char* str)
 {
-    if (_type != Type::STRING)
-        reset();
     _type = Type::STRING;
     _u.str = new std::string(str);
 }
 
 Value::Value(const std::string& str)
 {
-    if (_type != Type::STRING)
-        reset();
     _type = Type::STRING;
     _u.str = new std::string(str);
 }
 
 Value::Value(const Buffer& buf)
 {
-    if (_type != Type::BINARY)
-        reset();
     _type = Type::BINARY;
     _u.buf = new Buffer(buf);
 }
 
 Value::Value(bool v)
 {
-    if (_type != Type::BOOLEAN)
-        reset();
     _type = Type::BOOLEAN;
     _u.b = v;
 }
 
 Value::Value(int intVal)
 {
-    if (_type != Type::INTEGER)
-        reset();
     _type = Type::INTEGER;
     _u.i = intVal;
 }
 
 Value::Value(float floatVal)
 {
-    if (_type != Type::FLOAT)
-        reset();
     _type = Type::FLOAT;
     _u.i = floatVal;
 }
 
 Value::Value(const ValueArray& arrVal)
 {
-    if (_type != Type::ARRAY)
-        reset();
     _type = Type::ARRAY;
     _u.arr = new ValueArray(arrVal);
 }
 
 Value::Value(const ValueObject& objVal)
 {
-    if (_type != Type::OBJECT)
-        reset();
     _type = Type::OBJECT;
     _u.obj = new ValueObject(objVal);
 }
 
 Value::Value(const SocketIOPacket& packet)
 {
-    if (_type != Type::PACKET)
-        reset();
     _type = Type::PACKET;
     _u.packet = new SocketIOPacket(packet);
+}
+
+Value::Value(const ValueFunction& func)
+{
+    _type = Type::FUNCTION;
+    _u.func = new ValueFunction(func);
 }
 
 Value::~Value()
@@ -332,6 +320,8 @@ Value& Value::operator=(const Value& o)
 
 Value& Value::operator=(const char* str)
 {
+    if (_type != Type::STRING)
+        reset();
     _type = Type::STRING;
     _u.str = new std::string(str);
     return *this;
@@ -339,6 +329,8 @@ Value& Value::operator=(const char* str)
 
 Value& Value::operator=(const std::string& str)
 {
+    if (_type != Type::STRING)
+        reset();
     _type = Type::STRING;
     _u.str = new std::string(str);
     return *this;
@@ -346,6 +338,8 @@ Value& Value::operator=(const std::string& str)
 
 Value& Value::operator=(const Buffer& buf)
 {
+    if (_type != Type::BINARY)
+        reset();
     _type = Type::BINARY;
     _u.buf = new Buffer(buf);
     return *this;
@@ -353,6 +347,8 @@ Value& Value::operator=(const Buffer& buf)
 
 Value& Value::operator=(bool v)
 {
+    if (_type != Type::BOOLEAN)
+        reset();
     _type = Type::BOOLEAN;
     _u.b = v;
     return *this;
@@ -360,6 +356,8 @@ Value& Value::operator=(bool v)
 
 Value& Value::operator=(int intVal)
 {
+    if (_type != Type::INTEGER)
+        reset();
     _type = Type::INTEGER;
     _u.i = intVal;
     return *this;
@@ -367,6 +365,8 @@ Value& Value::operator=(int intVal)
 
 Value& Value::operator=(float floatVal)
 {
+    if (_type != Type::FLOAT)
+        reset();
     _type = Type::FLOAT;
     _u.f = floatVal;
     return *this;
@@ -374,6 +374,8 @@ Value& Value::operator=(float floatVal)
 
 Value& Value::operator=(const ValueArray& arrVal)
 {
+    if (_type != Type::ARRAY)
+        reset();
     _type = Type::ARRAY;
     _u.arr = new ValueArray(arrVal);
     return *this;
@@ -381,6 +383,8 @@ Value& Value::operator=(const ValueArray& arrVal)
 
 Value& Value::operator=(const ValueObject& objVal)
 {
+    if (_type != Type::OBJECT)
+        reset();
     _type = Type::OBJECT;
     _u.obj = new ValueObject(objVal);
     return *this;
@@ -388,8 +392,19 @@ Value& Value::operator=(const ValueObject& objVal)
 
 Value& Value::operator=(const SocketIOPacket& packet)
 {
+    if (_type != Type::PACKET)
+        reset();
     _type = Type::PACKET;
     _u.packet = new SocketIOPacket(packet);
+    return *this;
+}
+
+Value& Value::operator=(const ValueFunction& func)
+{
+    if (_type != Type::FUNCTION)
+        reset();
+    _type = Type::FUNCTION;
+    _u.func = new ValueFunction(func);
     return *this;
 }
 
@@ -431,6 +446,11 @@ const ValueObject& Value::asObject() const
 const SocketIOPacket& Value::asPacket() const
 {
     return *_u.packet;
+}
+
+const ValueFunction& Value::asFunction() const
+{
+    return *_u.func;
 }
 
 bool Value::isValid() const
@@ -564,6 +584,33 @@ std::string Value::toString() const
     return ss.str();
 }
 
+ValueArray Value::concat(const Value& a, const Value& b)
+{
+    ValueArray ret;
+
+    if (a.getType() == Value::Type::ARRAY)
+    {
+        ValueArray aArr = a.asArray();
+        ret.insert(ret.end(), aArr.begin(), aArr.end());
+    }
+    else
+    {
+        ret.push_back(a);
+    }
+
+    if (b.getType() == Value::Type::ARRAY)
+    {
+        ValueArray bArr = b.asArray();
+        ret.insert(ret.end(), bArr.begin(), bArr.end());
+    }
+    else
+    {
+        ret.push_back(b);
+    }
+
+    return ret;
+}
+
 //////
 
 SocketIOPacket::SocketIOPacket()
@@ -658,3 +705,14 @@ std::string SocketIOPacket::toString() const
  * Premade error packet.
  */
 EngineIOPacket EngineIOPacket::ERROR = {"error", "parser error"};
+
+EngineIOPacket EngineIOPacket::NONE;
+
+
+///
+
+bool Opts::isValid() const
+{
+    return false;
+}
+

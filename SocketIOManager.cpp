@@ -203,12 +203,12 @@ void SocketIOManager::onopen(const Value& unused)
 
   // add new subs
   auto socket = _engine;
-  _subs.push_back(gon(socket, "data", std::bind(SocketIOManager::ondata, this)));
-  _subs.push_back(gon(socket, "ping", std::bind(SocketIOManager::onping, this)));
-  _subs.push_back(gon(socket, "pong", std::bind(SocketIOManager::onpong, this)));
-  _subs.push_back(gon(socket, "error", std::bind(SocketIOManager::onerror, this)));
-  _subs.push_back(gon(socket, "close", std::bind(SocketIOManager::onclose, this)));
-  _subs.push_back(gon(_decoder, "decoded", std::bind(SocketIOManager::ondecoded, this)));
+  _subs.push_back(gon(socket, "data", std::bind(&SocketIOManager::ondata, this, std::placeholders::_1)));
+  _subs.push_back(gon(socket, "ping", std::bind(&SocketIOManager::onping, this, std::placeholders::_1)));
+  _subs.push_back(gon(socket, "pong", std::bind(&SocketIOManager::onpong, this, std::placeholders::_1)));
+  _subs.push_back(gon(socket, "error", std::bind(&SocketIOManager::onerror, this, std::placeholders::_1)));
+  _subs.push_back(gon(socket, "close", std::bind(&SocketIOManager::onclose, this, std::placeholders::_1)));
+  _subs.push_back(gon(_decoder, "decoded", std::bind(&SocketIOManager::ondecoded, this, std::placeholders::_1)));
 }
 
 void SocketIOManager::onping(const Value& unused)
@@ -243,7 +243,7 @@ std::shared_ptr<SocketIOSocket> SocketIOManager::createSocket(const std::string&
   auto iter = _nsps.find(nsp);
   std::shared_ptr<SocketIOSocket> socket;
   if (iter == _nsps.end()) {
-      socket = std::make_shared<SocketIOSocket>(this, nsp, opts);
+      socket = std::make_shared<SocketIOSocket>(shared_from_this(), nsp, opts);
     _nsps[nsp] = socket;
 
     auto onConnecting = [=](const Value& used) {
@@ -295,10 +295,10 @@ void SocketIOManager::sendPacket(SocketIOPacket& packet)
     _encoding = true;
     ValueArray encodedPackets = _encoder->encode(packet);
 
-    for (const auto& encodedPacket : encodedPackets)
-    {
-        _engine->send(encodedPacket, packet.options);
-    }
+//    for (const auto& encodedPacket : encodedPackets)
+//    {
+//cjh        _engine->send(encodedPacket, packet.options);
+//    }
     _encoding = false;
     processPacketQueue();
 
@@ -320,17 +320,18 @@ void SocketIOManager::cleanup()
 {
   debug("cleanup");
 
-  size_t subsLength = _subs.size()
-  for (size_t i = 0; i < subsLength; i++) {
-    OnObj sub = _subs.pop_front();
-    sub.destroy();
-  }
+    for (const auto& sub : _subs)
+    {
+        sub.destroy();
+    }
+
+    _subs.clear();
 
   _packetBuffer.clear();
   _encoding = false;
-  this.lastPing = null;
+//cjh  this.lastPing = null;
 
-  this.decoder.destroy();
+  _decoder->destroy();
 };
 
 void SocketIOManager::disconnect()
@@ -349,60 +350,60 @@ void SocketIOManager::disconnect()
     _engine->close();
 };
 
-void SocketIOManager::onclose(const std::string& reason)
+void SocketIOManager::onclose(const Value& reason)
 {
   debug("onclose");
 
-  this.cleanup();
+  cleanup();
   _backoff->reset();
   _readyState = ReadyState::CLOSED;
   emit("close", reason);
 
-  if (this._reconnection && !_skipReconnect) {
-    this.reconnect();
+  if (_reconnection && !_skipReconnect) {
+    reconnect();
   }
 };
 
 void SocketIOManager::reconnect()
 {
   if (_reconnecting || _skipReconnect)
-    return this;
+    return;
 
-  if (_backoff->attempts >= this._reconnectionAttempts) {
+  if (_backoff->getAttempts() >= _reconnectionAttempts) {
     debug("reconnect failed");
     _backoff->reset();
     emitAll("reconnect_failed");
     _reconnecting = false;
   } else {
-    long delay = _backoff->duration();
-    debug("will wait %dms before reconnect attempt", delay);
+    long delay = _backoff->getDuration();
+    debug("will wait %ldms before reconnect attempt", delay);
 
     _reconnecting = true;
-    TimerHandle timer = setTimeout(function () {
+    TimerHandle timer = setTimeout([=] () {
       if (_skipReconnect) return;
 
       debug("attempting reconnect");
-      emitAll("reconnect_attempt", _backoff->getAttempts());
-      emitAll("reconnecting", _backoff->getAttempts());
+//cjh      emitAll("reconnect_attempt", _backoff->getAttempts());
+//      emitAll("reconnecting", _backoff->getAttempts());
 
       // check again for the case socket closed in above events
       if (_skipReconnect) return;
 
-      this->connect([](err) {
-        if (err) {
-          debug("reconnect attempt error");
-          _reconnecting = false;
-          reconnect();
-          emitAll("reconnect_error", err.data);
-        } else {
-          debug("reconnect success");
-          onreconnect();
-        }
-      });
+//cjh      this->connect([](err) {
+//        if (err) {
+//          debug("reconnect attempt error");
+//          _reconnecting = false;
+//          reconnect();
+//          emitAll("reconnect_error", err.data);
+//        } else {
+//          debug("reconnect success");
+//          onreconnect();
+//        }
+//      });
     }, delay);
 
     OnObj onObj;
-    onObj.destroy = [](){
+    onObj.destroy = [=](){
       clearTimeout(timer);
     };
     _subs.push_back(std::move(onObj));
@@ -415,5 +416,5 @@ void SocketIOManager::onreconnect()
   _reconnecting = false;
   _backoff->reset();
   updateSocketIds();
-  emitAll("reconnect", attempt);
+  emitAll("reconnect", Value(attempt));
 }
