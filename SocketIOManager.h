@@ -4,8 +4,13 @@
 
 class SocketIOSocket;
 class EngineIOSocket;
+
+namespace socketio { namespace parser {
 class Encoder;
 class Decoder;
+
+}} // namespace socketio { namespace parser {
+
 class Backoff;
 
 class SocketIOManager : public Emitter
@@ -255,8 +260,8 @@ private:
 
     ReadyState _readyState;
 
-    std::unique_ptr<Encoder> _encoder;
-    std::unique_ptr<Decoder> _decoder;
+    std::unique_ptr<socketio::parser::Encoder> _encoder;
+    std::unique_ptr<socketio::parser::Decoder> _decoder;
 
     std::unique_ptr<Backoff> _backoff;
 

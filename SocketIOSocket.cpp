@@ -121,8 +121,8 @@ void SocketIOSocket::emit(const std::string& eventName, const Value& args)
 
 void SocketIOSocket::sendPacket(const SocketIOPacket& packet)
 {
-  const_cast<SocketIOPacket&>(packet).setNsp(_nsp);
-  _io->sendPacket(packet);
+  const_cast<SocketIOPacket&>(packet).nsp = _nsp;
+  _io->sendPacket(const_cast<SocketIOPacket&>(packet));
 }
 
 void SocketIOSocket::onopen(const Value& v)
@@ -145,20 +145,21 @@ void SocketIOSocket::onopen(const Value& v)
 
 void SocketIOSocket::onclose(const Value& reason)
 {
-  debug("close (%s)", reason);
+  debug("close (%s)", reason.asString().c_str());
   _connected = false;
   _disconnected = true;
   _id.clear();
   emit("disconnect", reason);
 }
 
-void SocketIOSocket::onpacket(const Value& packet)
+void SocketIOSocket::onpacket(const Value& v)
 {
+    const SocketIOPacket& packet = v.asPacket();
   if (packet.nsp != _nsp) return;
 
-  switch (packet.getType()) {
+  switch (packet.type) {
     case SocketIOPacket::Type::CONNECT:
-          onconnect(Value::NONE);
+          onconnect();
       break;
 
     case SocketIOPacket::Type::EVENT:
@@ -187,18 +188,18 @@ void SocketIOSocket::onpacket(const Value& packet)
   }
 }
 
-void SocketIOSocket::onevent(const Value& packet)
+void SocketIOSocket::onevent(const SocketIOPacket& packet)
 {
-  Value& args = packet.data;
+  Value& args = const_cast<Value&>(packet.data);
   debug("emitting event %s", args.toString().c_str());
 
-  if (packet.getId() != -1) {
+  if (packet.id != -1) {
     debug("attaching ack callback to event");
-    args.push_back(ack(packet.getId()));
+    args.push_back(ack(packet.id));
   }
 
   if (_connected) {
-    emit(packet.getEventName(), args);
+    emit(args);
   } else {
     _receiveBuffer.push_back(args);
   }

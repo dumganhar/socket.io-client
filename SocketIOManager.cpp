@@ -5,6 +5,8 @@
 #include "Backoff.h"
 #include "IOUtils.h"
 
+using namespace socketio::parser;
+
 SocketIOManager::SocketIOManager(const std::string& uri, const Opts& opts)
 {
   _opts = opts;

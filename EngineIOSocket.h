@@ -171,7 +171,7 @@ private:
      *
      */
 
-    void filterUpgrades(const std::vector<std::string>& upgrades);
+    std::vector<std::string> filterUpgrades(const std::vector<std::string>& upgrades);
 
     std::string _id;
     std::vector<std::string> _transports;

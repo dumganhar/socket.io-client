@@ -107,7 +107,7 @@ private:
      * @api private
      */
 
-    void onevent(const Value& packet);
+    void onevent(const SocketIOPacket& packet);
 
     /**
      * Produces an ack callback to emit with an event.

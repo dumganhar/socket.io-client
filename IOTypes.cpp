@@ -657,4 +657,4 @@ std::string SocketIOPacket::toString() const
 /**
  * Premade error packet.
  */
-Value EngineIOPacket::ERROR = {"error", "parser error"};
+EngineIOPacket EngineIOPacket::ERROR = {"error", "parser error"};

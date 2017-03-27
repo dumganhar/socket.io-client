@@ -2,7 +2,7 @@
 
 #include "Emitter.h"
 
-//namespace socketio { namespace parser {
+namespace socketio { namespace parser {
 
 uint8_t getProtocolVersion();
 
@@ -87,4 +87,4 @@ private:
     BinaryReconstructor* _reconstructor;
 };
 
-//}} //namespace socketio { namespace parser {
+}} //namespace socketio { namespace parser {

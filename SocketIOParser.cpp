@@ -3,7 +3,7 @@
 #include "SocketIOBinary.h"
 #include "IOUtils.h"
 
-//namespace socketio { namespace parser {
+namespace socketio { namespace parser {
 
 /**
  * Protocol version.
@@ -309,4 +309,4 @@ void Decoder::destroy()
 //  };
 //}
 
-//}} // namespace socketio { namespace parser {
+}} // namespace socketio { namespace parser {
