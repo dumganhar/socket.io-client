@@ -1,11 +1,12 @@
 #pragma once
 
+#include "EngineIOTransport.h"
 
-class Polling : public Transport
+class EngineIOPolling : public EngineIOTransport
 {
 public:
 
-    Polling(const Opts& opts);
+    EngineIOPolling(const ValueObject& opts);
 
     /**
      * Starts polling cycle.
@@ -22,7 +23,7 @@ public:
      * @api private
      */
 
-    void pause();
+    virtual void pause(const std::function<void()>& fn) override;
 
     /**
      * Writes a packets payload.
@@ -32,15 +33,17 @@ public:
      * @api private
      */
 
-    virtual bool write(const std::vector<Packet>& packets) override;
+    virtual bool write(const std::vector<EngineIOPacket>& packets) override;
 
-    virtual const char* getName() const override;
+    virtual const std::string& getName() const override;
     /**
      * Overloads onData to detect payloads.
      *
      * @api private
      */
-    virtual void onData(const Data& data) override;
+    virtual void onData(const Value& data) override;
+
+    virtual void onPause() = 0;
 
     /**
      * Opens the socket (triggers polling). We write a PING message to determine
@@ -58,9 +61,11 @@ public:
 
     virtual void doPoll() = 0;
 
-    virtual void doWrite(const Data& data, const std::function<void()>& fn) = 0;
+    virtual void doWrite(const Value& data, const ValueFunction& fn) = 0;
 private:
 
     bool _supportsBinary;
     bool _polling;
+
+    ReadyState _readyState;
 };

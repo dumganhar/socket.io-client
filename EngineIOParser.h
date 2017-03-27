@@ -55,7 +55,7 @@ EngineIOPacket decodePacket(const Value& data, bool utf8decode);
  * @api private
  */
 
-Value encodePayload(const EngineIOPacket& packet, bool supportsBinary);
+Value encodePayload(const std::vector<EngineIOPacket>& packet, bool supportsBinary);
 
 /*
  * Decodes data when a payload is maybe expected. Possible binary contents are

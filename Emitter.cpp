@@ -11,19 +11,19 @@ Emitter::~Emitter()
 
 }
 
-void Emitter::on(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key)
+void Emitter::on(const std::string& eventName, const ValueFunction& fn, int64_t key)
 {
   Callback cb(fn, key);
   _callbacks[eventName].push_back(std::move(cb));
 }
 
-void Emitter::on(const std::string& eventName, const std::function<void(const Value&)>& fn)
+void Emitter::on(const std::string& eventName, const ValueFunction& fn)
 {
     Callback cb(fn, ID());
     _callbacks[eventName].push_back(std::move(cb));
 }
 
-void Emitter::once(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key)
+void Emitter::once(const std::string& eventName, const ValueFunction& fn, int64_t key)
 {
   auto cb = [=](const Value& args) {
     off(eventName, key);
@@ -33,7 +33,7 @@ void Emitter::once(const std::string& eventName, const std::function<void(const 
   on(eventName, cb, key);
 }
 
-void Emitter::once(const std::string& eventName, const std::function<void(const Value&)>& fn)
+void Emitter::once(const std::string& eventName, const ValueFunction& fn)
 {
     ListenerId key = ID();
     auto cb = [=](const Value& args) {
@@ -138,7 +138,7 @@ bool Emitter::hasListeners(const std::string& eventName) const
     return _callbacks.find(eventName) != _callbacks.end();
 }
 
-OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn, int64_t key)
+OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const ValueFunction& fn, int64_t key)
 {
   obj->on(ev, fn, key);
   OnObj onObj;
@@ -148,7 +148,7 @@ OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::functi
   return onObj;
 }
 
-OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn)
+OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const ValueFunction& fn)
 {
   int64_t key = grabListenerId();
   return gon(obj, ev, fn, key);

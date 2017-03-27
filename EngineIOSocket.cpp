@@ -268,7 +268,7 @@ void EngineIOSocket::probe(const std::string& name)
 
         debug("pausing current transport %s", transport->getName().c_str());
         transport->pause([=]() {
-          if (failed) return;
+          if (*failed) return;
           if (ReadyState::CLOSED == _readyState) return;
           debug("changing transport and sending upgrade packet");
 
@@ -358,7 +358,7 @@ void EngineIOSocket::onOpen()
 
   // we check for `readyState` in case an `open`
   // listener already closed the socket
-  if (ReadyState::OPENED == _readyState && _upgrade && _transport->isSupportPaused()) {
+  if (ReadyState::OPENED == _readyState && _upgrade) {
     debug("starting upgrade probes");
     for (auto& upgrade : _upgrades)
     {
@@ -472,12 +472,12 @@ void EngineIOSocket::flush()
 }
 
 // write
-void EngineIOSocket::send(const Value& msg, const ValueObject& options, const std::function<void(const Value&)>& fn)
+void EngineIOSocket::send(const Value& msg, const ValueObject& options, const ValueFunction& fn)
 {
     sendPacket("message", msg, options, fn);
 }
 
-void EngineIOSocket::sendPacket(const std::string& type, const Value& data, const ValueObject& options, const std::function<void(const Value&)>& fn)
+void EngineIOSocket::sendPacket(const std::string& type, const Value& data, const ValueObject& options, const ValueFunction& fn)
 {
   if (ReadyState::CLOSING == _readyState || ReadyState::CLOSED == _readyState) {
     return;

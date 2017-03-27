@@ -32,7 +32,7 @@ public:
      * @return {Socket} for chaining.
      * @api public
      */
-    void send(const Value& msg, const ValueObject& options = OBJECT_NONE, const std::function<void(const Value&)>& fn = nullptr);
+    void send(const Value& msg, const ValueObject& options = OBJECT_NONE, const ValueFunction& fn = nullptr);
 
     const std::string& getId() const { return _id; }
 
@@ -104,7 +104,7 @@ private:
      * @param {Function} callback function.
      * @api private
      */
-    void sendPacket(const std::string& type, const Value& data, const ValueObject& options, const std::function<void(const Value&)>& fn);
+    void sendPacket(const std::string& type, const Value& data, const ValueObject& options, const ValueFunction& fn);
 
     /**
      * Called upon transport close.

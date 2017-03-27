@@ -12,14 +12,10 @@ public:
 
     virtual ~EngineIOTransport();
 
-    bool init(const Opts& opts);
-
     bool open();
     void close();
     bool send(const std::vector<EngineIOPacket>& packets);
-    virtual void pause(const std::function<void()>& fn) {}
-
-    virtual bool isSupportPaused() const = 0;
+    virtual void pause(const std::function<void()>& fn) = 0;
 
     bool isWritable() const { return _writable; }
 
@@ -42,9 +38,7 @@ public:
     virtual const std::string& getName() const = 0;
 
 protected:
-    EngineIOTransport();
-
-public:
+    EngineIOTransport(const ValueObject& opts);
 
     std::string _path;
     std::string _hostname;
@@ -73,6 +67,8 @@ public:
     std::string _localAddress;
 
     bool _writable;
+
+    friend class EngineIOSocket;
 };
 
 //}} // namespace socketio { namespace transport {

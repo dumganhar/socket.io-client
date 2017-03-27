@@ -224,7 +224,7 @@ static Value encodePayloadAsBinary(const EngineIOPacket& packets)
     return Value::NONE;
 }
 
-Value encodePayload(const EngineIOPacket& packet, bool supportsBinary)
+Value encodePayload(const std::vector<EngineIOPacket>& packet, bool supportsBinary)
 {
 //  if (supportsBinary) {
 //    return exports.encodePayloadAsBinary(packets, callback);
@@ -324,7 +324,7 @@ static EngineIOPacket decodePayloadAsBinary(const Value& data, bool binaryType)
  * @api public
  */
 
-EngineIOPacket decodePayload(const Value& data, bool binaryType)
+EngineIOPacket decodePayload(const Value& data)
 {
 //  if ("string" != typeof data) {
 //    return exports.decodePayloadAsBinary(data, binaryType, callback);

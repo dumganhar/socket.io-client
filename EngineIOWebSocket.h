@@ -1,13 +1,16 @@
 #pragma once
 
-class WS : public Transport
+#include "EngineIOTransport.h"
+
+class EngineIOWebSocket : public EngineIOTransport
 {
 public:
-    WS(const Opts& opts);
-    virtual ~WS();
+    EngineIOWebSocket(const ValueObject& opts);
+    virtual ~EngineIOWebSocket();
 
-    virtual const char* getName() const override;
-    virtual bool write(const std::vector<Packet>& packets) override;
+    virtual const std::string& getName() const override;
+    virtual void pause(const std::function<void()>& fn) override;
+    virtual bool write(const std::vector<EngineIOPacket>& packets) override;
     virtual void onClose() override;
     virtual bool doOpen() override;
     virtual void doClose() override;
@@ -21,7 +24,8 @@ private:
      */
     void addEventListeners();
 
-    WebSocket* _ws;
+//    WebSocket* _ws;
 
     bool _supportsBinary;
+    bool _perMessageDeflate;
 };

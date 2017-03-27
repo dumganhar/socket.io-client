@@ -1,18 +1,17 @@
 #pragma once
 
-struct Opts
-{
-    
-};
+#include "EngineIOPolling.h"
 
-class XHR : public Polling
+class EngineIORequest;
+
+class EngineIOPollingXHR : public EngineIOPolling
 {
 public:
-    XHR(const Opts& opts);
+    EngineIOPollingXHR(const ValueObject& opts);
 
-    virtual void doPoll();
-    virtual void doWrite(const Data& data, const std::function<void()>& fn);
-
+    virtual void doPoll() override;
+    virtual void doWrite(const Value& data, const ValueFunction& fn) override;
+    virtual void onPause() override;
 private:
 
     /**
@@ -22,5 +21,10 @@ private:
      * @api private
      */
 
-    void request(const Opts& opts);
+    std::shared_ptr<EngineIORequest> request(const std::string& method, const Value& data);
+
+    long _requestTimeout;
+
+    std::shared_ptr<EngineIORequest> _pollXhr;
+    std::shared_ptr<EngineIORequest> _sendXhr;
 };

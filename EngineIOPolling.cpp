@@ -1,14 +1,16 @@
+#include "EngineIOPolling.h"
+#include "EngineIOParser.h"
 
-
-Polling::Polling(const Opts& opts)
-: Transport(opts)
+EngineIOPolling::EngineIOPolling(const ValueObject& opts)
+: EngineIOTransport(opts)
 {
 
 }
 
-const char* Polling::getName() const
+const std::string& EngineIOPolling::getName() const
 {
-  return "polling"
+    static std::string name = "polling";
+    return name;
 }
 
 /**
@@ -18,126 +20,125 @@ const char* Polling::getName() const
  * @api private
  */
 
-bool Polling::doOpen()
+bool EngineIOPolling::doOpen()
 {
-  poll();
+    poll();
+    return true;
 }
 
-void Polling::pause()
+void EngineIOPolling::pause(const std::function<void()>& fn)
 {
-  var self = this;
+    _readyState = ReadyState::PAUSING;
 
-  this.readyState = "pausing";
+  auto pauseFunc = [this]() {
+      debug("paused");
+      _readyState = ReadyState::PAUSED;
+      onPause();
+  };
 
-  function pause () {
-    debug("paused");
-    self.readyState = "paused";
-    onPause();
-  }
-
-  if (_polling || !this.writable) {
-    var total = 0;
+  if (_polling || !_writable) {
+      std::shared_ptr<int> total = std::make_shared<int>(0);
 
     if (_polling) {
       debug("we are currently polling - waiting to pause");
-      total++;
-      this.once("pollComplete", function () {
+      (*total)++;
+      once("pollComplete", [=](const Value&) {
         debug("pre-pause polling complete");
-        --total || pause();
+        if (--(*total) == 0)
+            pauseFunc();
       });
     }
 
-    if (!this.writable) {
+    if (!_writable) {
       debug("we are currently writing - waiting to pause");
-      total++;
-      this.once("drain", function () {
-        debug("pre-pause writing complete");
-        --total || pause();
+      (*total)++;
+      once("drain", [=](const Value&) {
+          debug("pre-pause writing complete");
+          if (--(*total) == 0)
+              pauseFunc();
       });
     }
   } else {
-    pause();
+    pauseFunc();
   }
-};
+}
 
-void Polling::poll()
+void EngineIOPolling::poll()
 {
   debug("polling");
   _polling = true;
-  this.doPoll();
-  this.emit("poll");
-};
+  doPoll();
+  emit("poll");
+}
 
-void Polling::onData(const Data& data)
+void EngineIOPolling::onData(const Value& data)
 {
-  var self = this;
-  debug("polling got data %s", data);
-  var callback = function (packet, index, total) {
+  debug("polling got data %s", data.toString().c_str());
+
+    // decode payload
+    EngineIOPacket packet = engineio::parser::decodePayload(data);
     // if its the first message we consider the transport open
-    if ("opening" == self.readyState) {
-      self.onOpen();
+    if (ReadyState::OPENING == _readyState) {
+        onOpen();
     }
 
     // if its a close packet, we close the ongoing requests
     if ("close" == packet.type) {
-      self.onClose();
-      return false;
+        onClose();
+        return;
     }
 
     // otherwise bypass onData and handle the message
-    self.onPacket(packet);
-  };
+    onPacket(packet);
 
-  // decode payload
-  parser::decodePayload(data, this.socket.binaryType, callback);
+    // if an event did not trigger closing
+    if (ReadyState::CLOSED != _readyState) {
+        // if we got data we're not polling
+        _polling = false;
+        emit("pollComplete");
 
-  // if an event did not trigger closing
-  if ("closed" != this.readyState) {
-    // if we got data we're not polling
-    _polling = false;
-    this.emit("pollComplete");
-
-    if ("open" == this.readyState) {
-      poll();
-    } else {
-      debug("ignoring poll - transport state "%s"", this.readyState);
+        if (ReadyState::OPENED == _readyState) {
+            poll();
+        } else {
+            debug("ignoring poll - transport state %d", (int)_readyState);
+        }
     }
-  }
-};
+}
 
-void Polling::doClose()
+void EngineIOPolling::doClose()
 {
-  var self = this;
-
-  function close () {
+  auto close = [this](const Value&) {
     debug("writing close packet");
-    self.write([{ type: "close" }]);
-  }
-
-  if ("open" == this.readyState) {
-    debug("transport open - closing");
-    close();
-  } else {
-    // in case we're trying to close while
-    // handshaking is in progress (GH-164)
-    debug("transport not open - deferring close");
-    this.once("open", close);
-  }
-};
-
-bool Polling::write(const std::vector<Packet>& packets)
-{
-  var self = this;
-  this.writable = false;
-  var callbackfn = function () {
-    self.writable = true;
-    self.emit("drain");
+      std::vector<EngineIOPacket> packets;
+      EngineIOPacket p;
+      p.type = "close";
+      packets.push_back(p);
+      write(packets);
   };
 
-  parser.encodePayload(packets, this.supportsBinary, function (data) {
-    self.doWrite(data, callbackfn);
-  });
-};
+    if (ReadyState::OPENED == _readyState) {
+        debug("transport open - closing");
+        close(Value::NONE);
+    } else {
+        // in case we're trying to close while
+        // handshaking is in progress (GH-164)
+        debug("transport not open - deferring close");
+        once("open", close);
+    }
+}
+
+bool EngineIOPolling::write(const std::vector<EngineIOPacket>& packets)
+{
+  _writable = false;
+  auto callbackfn = [this](const Value&) {
+    _writable = true;
+    emit("drain");
+  };
+
+  const Value& data = engineio::parser::encodePayload(packets, _supportsBinary);
+  doWrite(data, callbackfn);
+    return true;
+}
 
 /**
  * Generates uri for connection.
@@ -145,33 +146,33 @@ bool Polling::write(const std::vector<Packet>& packets)
  * @api private
  */
 
-Polling.prototype.uri = function () {
-  var query = this.query || {};
-  var schema = this.secure ? "https' : 'http";
-  var port = "";
-
-  // cache busting is forced
-  if (false != this.timestampRequests) {
-    query[this.timestampParam] = yeast();
-  }
-
-  if (!this.supportsBinary && !query.sid) {
-    query.b64 = 1;
-  }
-
-  query = parseqs.encode(query);
-
-  // avoid port if default for schema
-  if (this.port && (("https" == schema && Number(this.port) != 443) ||
-     ("http" == schema && Number(this.port) != 80))) {
-    port = ":" + this.port;
-  }
-
-  // prepend ? to query
-  if (query.length) {
-    query = "?" + query;
-  }
-
-  var ipv6 = this.hostname.indexOf(":") != -1;
-  return schema + "://' + (ipv6 ? '[' + this.hostname + ']" : this.hostname) + port + this.path + query;
-};
+//Polling.prototype.uri = function () {
+//  var query = this.query || {};
+//  var schema = this.secure ? "https' : 'http";
+//  var port = "";
+//
+//  // cache busting is forced
+//  if (false != this.timestampRequests) {
+//    query[this.timestampParam] = yeast();
+//  }
+//
+//  if (!this.supportsBinary && !query.sid) {
+//    query.b64 = 1;
+//  }
+//
+//  query = parseqs.encode(query);
+//
+//  // avoid port if default for schema
+//  if (this.port && (("https" == schema && Number(this.port) != 443) ||
+//     ("http" == schema && Number(this.port) != 80))) {
+//    port = ":" + this.port;
+//  }
+//
+//  // prepend ? to query
+//  if (query.length) {
+//    query = "?" + query;
+//  }
+//
+//  var ipv6 = this.hostname.indexOf(":") != -1;
+//  return schema + "://' + (ipv6 ? '[' + this.hostname + ']" : this.hostname) + port + this.path + query;
+//};

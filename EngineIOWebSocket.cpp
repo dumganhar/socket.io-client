@@ -1,18 +1,18 @@
-WS::WS(const Opts& opts)
+#include "EngineIOWebSocket.h"
+#include "IOUtils.h"
+#include "EngineIOParser.h"
+
+EngineIOWebSocket::EngineIOWebSocket(const ValueObject& opts)
+: EngineIOTransport(opts)
 {
-  var forceBase64 = (opts && opts.forceBase64);
+  bool forceBase64 = opts.at("forceBase64").asBool();
   if (forceBase64) {
     _supportsBinary = false;
   }
-  this.perMessageDeflate = opts.perMessageDeflate;
-  this.usingBrowserWebSocket = BrowserWebSocket && !opts.forceNode;
-  if (!this.usingBrowserWebSocket) {
-    WebSocket = NodeWebSocket;
-  }
-  Transport.call(this, opts);
+  _perMessageDeflate = opts.at("perMessageDeflate").asBool();
 }
 
-WS::~WS()
+EngineIOWebSocket::~EngineIOWebSocket()
 {
   
 }
@@ -23,9 +23,10 @@ WS::~WS()
  * @api public
  */
 
-const char* WS::getName() const
+const std::string& EngineIOWebSocket::getName() const
 {
-  return "websocket";
+    static const std::string name = "websocket";
+    return name;
 }
 
 /**
@@ -34,128 +35,108 @@ const char* WS::getName() const
  * @api private
  */
 
-void WS::doOpen()
+bool EngineIOWebSocket::doOpen()
 {
-  if (!this.check()) {
-    // let probe timeout
-    return;
-  }
+//  if (!this.check()) {
+//    // let probe timeout
+//    return;
+//  }
 
-  var uri = this.uri();
-  var protocols = void (0);
-  var opts = {
-    agent: this.agent,
-    perMessageDeflate: this.perMessageDeflate
-  };
+//  var uri = this.uri();
+//  var protocols = void (0);
+//  var opts = {
+//    agent: this.agent,
+//    perMessageDeflate: this.perMessageDeflate
+//  };
+//
+//  // SSL options for Node.js client
+//  opts.pfx = this.pfx;
+//  opts.key = this.key;
+//  opts.passphrase = this.passphrase;
+//  opts.cert = this.cert;
+//  opts.ca = this.ca;
+//  opts.ciphers = this.ciphers;
+//  opts.rejectUnauthorized = this.rejectUnauthorized;
+//  if (this.extraHeaders) {
+//    opts.headers = this.extraHeaders;
+//  }
+//  if (this.localAddress) {
+//    opts.localAddress = this.localAddress;
+//  }
 
-  // SSL options for Node.js client
-  opts.pfx = this.pfx;
-  opts.key = this.key;
-  opts.passphrase = this.passphrase;
-  opts.cert = this.cert;
-  opts.ca = this.ca;
-  opts.ciphers = this.ciphers;
-  opts.rejectUnauthorized = this.rejectUnauthorized;
-  if (this.extraHeaders) {
-    opts.headers = this.extraHeaders;
-  }
-  if (this.localAddress) {
-    opts.localAddress = this.localAddress;
-  }
-
-  _ws = new WebSocket(uri, protocols, opts);
-
-  if (_ws == nullptr) {
-    return this.emit("error", err);
-  }
+//  _ws = new WebSocket(uri, protocols, opts);
+//
+//  if (_ws == nullptr) {
+//    return this.emit("error", err);
+//  }
 
   _supportsBinary = true;
 
   addEventListeners();
+
+    return true;
 }
 
-void WS::addEventListeners()
+void EngineIOWebSocket::addEventListeners()
 {
-  var self = this;
-
-  _ws->onopen = function () {
-    self.onOpen();
-  };
-  _ws->onclose = function () {
-    self.onClose();
-  };
-  _ws->onmessage = function (ev) {
-    self.onData(ev.data);
-  };
-  _ws->onerror = function (e) {
-    self.onError("websocket error", e);
-  };
+//  _ws->onopen = function () {
+//    self.onOpen();
+//  };
+//  _ws->onclose = function () {
+//    self.onClose();
+//  };
+//  _ws->onmessage = function (ev) {
+//    self.onData(ev.data);
+//  };
+//  _ws->onerror = function (e) {
+//    self.onError("websocket error", e);
+//  };
 }
 
-bool WS::write(const std::vector<Packet>& packets)
+void EngineIOWebSocket::pause(const std::function<void()>& fn)
+{
+//cjh
+}
+
+bool EngineIOWebSocket::write(const std::vector<EngineIOPacket>& packets)
 {
   _writable = false;
 
+    auto done = [this]() {
+        emit("flush");
+
+        // fake drain
+        // defer to next tick to allow Socket to clear writeBuffer
+        setTimeout([this]() {
+            _writable = true;
+            emit("drain");
+        }, 0);
+    };
+
   // encodePacket efficient as it uses WS framing
   // no need for encodePayload
-  var total = packets.length;
-  for (var i = 0, l = total; i < l; i++) {
-    (function (packet) {
-      parser.encodePacket(packet, _supportsBinary, [](Data& data) {
-        if (!self.usingBrowserWebSocket) {
-          // always create a new object (GH-437)
-          var opts = {};
-          if (packet.options) {
-            opts.compress = packet.options.compress;
-          }
+    for (const auto& packet : packets)
+    {
+        Value encodedPacket = engineio::parser::encodePacket(packet, _supportsBinary, false);
+//        _ws->send(encodedPacket);
+    }
 
-          if (self.perMessageDeflate) {
-            var len = "string" == typeof data ? global.Buffer.byteLength(data) : data.length;
-            if (len < self.perMessageDeflate.threshold) {
-              opts.compress = false;
-            }
-          }
-        }
+    if (!packets.empty())
+    {
+        done();
+    }
 
-        // Sometimes the websocket has already been closed but the browser didn't
-        // have a chance of informing us about it yet, in that case send will
-        // throw an error
-        try {
-          if (self.usingBrowserWebSocket) {
-            // TypeError is thrown when passing the second argument on Safari
-            _ws->send(data);
-          } else {
-            _ws->send(data, opts);
-          }
-        } catch (e) {
-          debug("websocket closed before onclose event");
-        }
-
-        --total || done();
-      });
-    })(packets[i]);
-  }
-
-  function done () {
-    emit("flush");
-
-    // fake drain
-    // defer to next tick to allow Socket to clear writeBuffer
-    setTimeout(function () {
-      _writable = true;
-      emit("drain");
-    }, 0);
-  }
-};
-
-void WS::onClose()
-{
-    Transport::onClose();
+    return true;
 }
 
-void WS::doClose()
+void EngineIOWebSocket::onClose()
 {
-    _ws->close();
+    EngineIOTransport::onClose();
+}
+
+void EngineIOWebSocket::doClose()
+{
+//    _ws->close();
 }
 
 /**
@@ -164,45 +145,45 @@ void WS::doClose()
  * @api private
  */
 
-WS.prototype.uri = function () {
-  var query = this.query || {};
-  var schema = this.secure ? "wss' : 'ws";
-  var port = "";
-
-  // avoid port if default for schema
-  if (this.port && (("wss" == schema && Number(this.port) != 443) ||
-    ("ws" == schema && Number(this.port) != 80))) {
-    port = ":" + this.port;
-  }
-
-  // append timestamp to URI
-  if (this.timestampRequests) {
-    query[this.timestampParam] = yeast();
-  }
-
-  // communicate binary support capabilities
-  if (!_supportsBinary) {
-    query.b64 = 1;
-  }
-
-  query = parseqs.encode(query);
-
-  // prepend ? to query
-  if (query.length) {
-    query = "?" + query;
-  }
-
-  var ipv6 = this.hostname.indexOf(":") != -1;
-  return schema + "://' + (ipv6 ? '[' + this.hostname + ']" : this.hostname) + port + this.path + query;
-};
-
-/**
- * Feature detection for WebSocket.
- *
- * @return {Boolean} whether this transport is available.
- * @api public
- */
-
-WS.prototype.check = function () {
-  return !!WebSocket && !("__initialize" in WebSocket && this.name == WS.prototype.name);
-};
+//EngineIOWebSocket.prototype.uri = function () {
+//  var query = this.query || {};
+//  var schema = this.secure ? "wss' : 'ws";
+//  var port = "";
+//
+//  // avoid port if default for schema
+//  if (this.port && (("wss" == schema && Number(this.port) != 443) ||
+//    ("ws" == schema && Number(this.port) != 80))) {
+//    port = ":" + this.port;
+//  }
+//
+//  // append timestamp to URI
+//  if (this.timestampRequests) {
+//    query[this.timestampParam] = yeast();
+//  }
+//
+//  // communicate binary support capabilities
+//  if (!_supportsBinary) {
+//    query.b64 = 1;
+//  }
+//
+//  query = parseqs.encode(query);
+//
+//  // prepend ? to query
+//  if (query.length) {
+//    query = "?" + query;
+//  }
+//
+//  var ipv6 = this.hostname.indexOf(":") != -1;
+//  return schema + "://' + (ipv6 ? '[' + this.hostname + ']" : this.hostname) + port + this.path + query;
+//};
+//
+///**
+// * Feature detection for WebSocket.
+// *
+// * @return {Boolean} whether this transport is available.
+// * @api public
+// */
+//
+//EngineIOWebSocket.prototype.check = function () {
+//  return !!WebSocket && !("__initialize" in WebSocket && this.name == WS.prototype.name);
+//};

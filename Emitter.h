@@ -16,8 +16,8 @@ public:
      * @return {Emitter}
      * @api public
      */
-    virtual void on(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key);
-    virtual void on(const std::string& eventName, const std::function<void(const Value&)>& fn);
+    virtual void on(const std::string& eventName, const ValueFunction& fn, int64_t key);
+    virtual void on(const std::string& eventName, const ValueFunction& fn);
     /**
      * Adds an `event` listener that will be invoked a single
      * time then automatically removed.
@@ -27,8 +27,8 @@ public:
      * @return {Emitter}
      * @api public
      */
-    virtual void once(const std::string& eventName, const std::function<void(const Value&)>& fn, int64_t key);
-    virtual void once(const std::string& eventName, const std::function<void(const Value&)>& fn);
+    virtual void once(const std::string& eventName, const ValueFunction& fn, int64_t key);
+    virtual void once(const std::string& eventName, const ValueFunction& fn);
 
     /**
      * Remove the given callback for `event` or all
@@ -57,7 +57,7 @@ public:
 
     struct Callback
     {
-        std::function<void(const Value&)> fn;
+        ValueFunction fn;
         int64_t key;
 
         Callback()
@@ -65,7 +65,7 @@ public:
         , key(-1)
         {}
 
-        Callback(const std::function<void(const Value&)>& fn_, int64_t key_)
+        Callback(const ValueFunction& fn_, int64_t key_)
         : fn(fn_)
         , key(key_)
         {}
@@ -108,5 +108,5 @@ struct OnObj
  * @api public
  */
 
-OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn, int64_t key);
-OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const std::function<void(const Value&)>& fn);
+OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const ValueFunction& fn, int64_t key);
+OnObj gon(std::shared_ptr<Emitter> obj, const std::string& ev, const ValueFunction& fn);

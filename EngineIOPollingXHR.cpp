@@ -1,3 +1,5 @@
+#include "EngineIOPollingXHR.h"
+#include "EngineIORequest.h"
 /**
  * XHR Polling constructor.
  *
@@ -5,52 +7,52 @@
  * @api public
  */
 
-XHR::XHR(const Opts& opts)
-: Polling(opts)
+EngineIOPollingXHR::EngineIOPollingXHR(const ValueObject& opts)
+: EngineIOPolling(opts)
 {
-  this.requestTimeout = opts.requestTimeout;
+  _requestTimeout = opts.at("requestTimeout").asInt();
 
-  if (global.location) {
-    var isSSL = "https:" == location.protocol;
-    var port = location.port;
-
-    // some user agents have empty `location.port`
-    if (!port) {
-      port = isSSL ? 443 : 80;
-    }
-
-    this.xd = opts.hostname != global.location.hostname ||
-      port != opts.port;
-    this.xs = opts.secure != isSSL;
-  } else {
-    this.extraHeaders = opts.extraHeaders;
-  }
+//  if (global.location) {
+//    var isSSL = "https:" == location.protocol;
+//    var port = location.port;
+//
+//    // some user agents have empty `location.port`
+//    if (!port) {
+//      port = isSSL ? 443 : 80;
+//    }
+//
+//    this.xd = opts.hostname != global.location.hostname ||
+//      port != opts.port;
+//    this.xs = opts.secure != isSSL;
+//  } else {
+//    this.extraHeaders = opts.extraHeaders;
+//  }
 }
 
-void XHR::request(const Opts& opts)
+std::shared_ptr<EngineIORequest> EngineIOPollingXHR::request(const std::string& method, const Value& data)
 {
-  opts = opts || {};
-  opts.uri = this.uri();
-  opts.xd = this.xd;
-  opts.xs = this.xs;
-  opts.agent = this.agent || false;
-  opts.supportsBinary = this.supportsBinary;
-  opts.enablesXDR = this.enablesXDR;
+//  opts.uri = this.uri();
+//  opts.xd = this.xd;
+//  opts.xs = this.xs;
+//  opts.agent = this.agent || false;
+//  opts.supportsBinary = this.supportsBinary;
+//  opts.enablesXDR = this.enablesXDR;
+//
+//  // SSL options for Node.js client
+//  opts.pfx = this.pfx;
+//  opts.key = this.key;
+//  opts.passphrase = this.passphrase;
+//  opts.cert = this.cert;
+//  opts.ca = this.ca;
+//  opts.ciphers = this.ciphers;
+//  opts.rejectUnauthorized = this.rejectUnauthorized;
+//  opts.requestTimeout = this.requestTimeout;
+//
+//  // other options for Node.js client
+//  opts.extraHeaders = this.extraHeaders;
 
-  // SSL options for Node.js client
-  opts.pfx = this.pfx;
-  opts.key = this.key;
-  opts.passphrase = this.passphrase;
-  opts.cert = this.cert;
-  opts.ca = this.ca;
-  opts.ciphers = this.ciphers;
-  opts.rejectUnauthorized = this.rejectUnauthorized;
-  opts.requestTimeout = this.requestTimeout;
-
-  // other options for Node.js client
-  opts.extraHeaders = this.extraHeaders;
-
-  return new Request(opts);
+    ValueObject opts;
+    return std::make_shared<EngineIORequest>(opts);
 };
 
 /**
@@ -61,17 +63,20 @@ void XHR::request(const Opts& opts)
  * @api private
  */
 
-void XHR::doWrite(const Data& data, const std::function<void()>& fn)
+void EngineIOPollingXHR::doWrite(const Value& data, const ValueFunction& fn)
 {
-  var isBinary = typeof data != "string" && data != undefined;
-  var req = request({ method: "POST", data: data, isBinary: isBinary });
-  var self = this;
-  req.on("success", fn);
-  req.on("error", function (err) {
-    self.onError("xhr post error", err);
+  auto req = request("POST", data);
+  req->on("success", fn);
+  req->on("error", [this](const Value& err) {
+    onError("xhr post error", err.asString());
   });
-  this.sendXhr = req;
-};
+  _sendXhr = req;
+}
+
+void EngineIOPollingXHR::onPause()
+{
+
+}
 
 /**
  * Starts a poll cycle.
@@ -79,19 +84,18 @@ void XHR::doWrite(const Data& data, const std::function<void()>& fn)
  * @api private
  */
 
-void XHR::doPoll()
+void EngineIOPollingXHR::doPoll()
 {
   debug("xhr poll");
-  var req = request();
-  var self = this;
-  req.on("data", function (data) {
-    self.onData(data);
+  auto req = request("GET", Value::NONE);
+  req->on("data", [this](const Value& data) {
+    onData(data);
   });
-  req.on("error", function (err) {
-    self.onError("xhr poll error", err);
+  req->on("error", [this](const Value& err) {
+    onError("xhr poll error", err.asString());
   });
-  this.pollXhr = req;
-};
+  _pollXhr = req;
+}
 
 
 

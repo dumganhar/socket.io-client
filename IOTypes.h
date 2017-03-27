@@ -223,6 +223,8 @@ enum class ReadyState
     NONE,
     OPENING,
     OPENED,
+    PAUSING,
+    PAUSED,
     CLOSING,
     CLOSED
 };
