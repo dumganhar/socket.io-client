@@ -1,6 +1,22 @@
 #include "EngineIOTransport.h"
+#include "EngineIOParser.h"
 
 //namespace socketio { namespace transport {
+
+std::shared_ptr<EngineIOTransport> EngineIOTransport::create(const std::string& name, const ValueObject& opts)
+{
+    return nullptr;
+}
+
+EngineIOTransport::EngineIOTransport()
+{
+
+}
+
+EngineIOTransport::~EngineIOTransport()
+{
+
+}
 
 /**
  * Transport abstract constructor.
@@ -64,12 +80,12 @@ void EngineIOTransport::onError(const std::string& msg, const std::string& desc)
 
 bool EngineIOTransport::open()
 {
-  if (ReadyState::CLOSED == _readyState || ReadyState::NONE == _readyState) {
-    _readyState = ReadyState::OPENING;
-    return doOpen();
-  }
+    if (ReadyState::CLOSED == _readyState || ReadyState::NONE == _readyState) {
+        _readyState = ReadyState::OPENING;
+        return doOpen();
+    }
 
-  return false;
+    return false;
 }
 
 /**
@@ -80,10 +96,10 @@ bool EngineIOTransport::open()
 
 void EngineIOTransport::close()
 {
-  if (ReadyState::OPENING == _readyState || ReadyState::OPENED == _readyState) {
-    doClose();
-    onClose();
-  }
+    if (ReadyState::OPENING == _readyState || ReadyState::OPENED == _readyState) {
+        doClose();
+        onClose();
+    }
 }
 
 /**
@@ -95,10 +111,10 @@ void EngineIOTransport::close()
 
 bool EngineIOTransport::send(const std::vector<EngineIOPacket>& packets)
 {
-  if (ReadyState::OPENED == _readyState) {
-      return write(packets);
-  }
-  return false;
+    if (ReadyState::OPENED == _readyState) {
+        return write(packets);
+    }
+    return false;
 }
 
 /**
@@ -109,9 +125,9 @@ bool EngineIOTransport::send(const std::vector<EngineIOPacket>& packets)
 
 void EngineIOTransport::onOpen()
 {
-  _readyState = ReadyState::OPENED;
-  _writable = true;
-  emit("open");
+    _readyState = ReadyState::OPENED;
+    _writable = true;
+    emit("open");
 }
 
 /**
@@ -123,8 +139,8 @@ void EngineIOTransport::onOpen()
 
 void EngineIOTransport::onData(const Value& data)
 {
-//  EngineIOPacket packet = decodePacket(data, _socket.binaryType);
-//  onPacket(packet);
+    EngineIOPacket packet = engineio::parser::decodePacket(data, true);
+    onPacket(packet);
 }
 
 /**
@@ -133,7 +149,7 @@ void EngineIOTransport::onData(const Value& data)
 
 void EngineIOTransport::onPacket(const EngineIOPacket& packet)
 {
-//cjh  emit("packet", packet);
+    emit("packet", packet);
 }
 
 /**
@@ -144,8 +160,8 @@ void EngineIOTransport::onPacket(const EngineIOPacket& packet)
 
 void EngineIOTransport::onClose()
 {
-  _readyState = ReadyState::CLOSED;
-  emit("close");
+    _readyState = ReadyState::CLOSED;
+    emit("close");
 }
 
 //}} // namespace socketio { namespace transport {

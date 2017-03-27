@@ -147,7 +147,7 @@ void SocketIOManager::connect(const std::function<void()>& fn, const Opts& opts)
       onopen(Value::NONE);
     if (fn)
         fn();
-  }, ID());
+  });
 
   // emit `connect_error`
   OnObj errorSub = gon(socket, "error", [this, fn](const Value& data) {
@@ -163,7 +163,7 @@ void SocketIOManager::connect(const std::function<void()>& fn, const Opts& opts)
       // Only do this if there is no fn to handle the error
       maybeReconnectOnOpen();
     }
-  }, ID());
+  });
 
   // emit `connect_timeout`
   if (false != _timeout) {
@@ -287,7 +287,7 @@ void SocketIOManager::sendPacket(SocketIOPacket& packet)
   debug("writing packet %s", packet.toString().c_str());
     if (!packet.query.empty() && packet.type == SocketIOPacket::Type::CONNECT)
     {
-        packet.nsp += ("?" + packet.query);
+        packet.nsp += ("?" + queryToString(packet.query));
     }
 
   if (!_encoding) {
@@ -295,10 +295,10 @@ void SocketIOManager::sendPacket(SocketIOPacket& packet)
     _encoding = true;
     ValueArray encodedPackets = _encoder->encode(packet);
 
-//    for (const auto& encodedPacket : encodedPackets)
-//    {
-//cjh        _engine->send(encodedPacket, packet.options);
-//    }
+    for (const auto& encodedPacket : encodedPackets)
+    {
+        _engine->send(encodedPacket, packet.options);
+    }
     _encoding = false;
     processPacketQueue();
 

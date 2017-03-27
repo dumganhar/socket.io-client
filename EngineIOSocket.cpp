@@ -1,18 +1,12 @@
 #include "EngineIOSocket.h"
 #include "EngineIOParser.h"
+#include "EngineIOTransport.h"
 #include "IOUtils.h"
 
 static bool __priorWebsocketSuccess = false;
 
 EngineIOSocket::EngineIOSocket(const std::string& uri, const Opts& opts)
 {
-//cjh  opts = opts || {};
-//
-//  if (uri && "object" == typeof uri) {
-//    opts = uri;
-//    uri = null;
-//  }
-//
 //  if (uri) {
 //    uri = parseuri(uri);
 //    opts.hostname = uri.host;
@@ -84,15 +78,15 @@ EngineIOSocket::EngineIOSocket(const std::string& uri, const Opts& opts)
 //    }
 //  }
 //
-//  // set on handshake
-//  _id = "";
-//  _upgrades = null;
-//  this.pingInterval = null;
-//  this.pingTimeout = null;
-//
+  // set on handshake
+  _id = "";
+  _upgrades.clear();
+  _pingInterval = 0;
+  _pingTimeout = 0;
+
 //  // set on heartbeat
-//  this.pingIntervalTimer = null;
-//  this.pingTimeoutTimer = null;
+  _pingIntervalTimer = INVALID_TIMER_HANDLE;
+  _pingTimeoutTimer = INVALID_TIMER_HANDLE;
 
   open();
 }
@@ -112,19 +106,22 @@ int EngineIOSocket::getProtocolVersion() const
 
 std::shared_ptr<EngineIOTransport> EngineIOSocket::createTransport(const std::string& name)
 {
-  debug("creating transport %s", name.c_str());
-//  var query = clone(this.query);
-//
-//  // append engine.io protocol identifier
-//  query.EIO = parser.protocol;
-//
-//  // transport name
-//  query.transport = name;
-//
-//  // session id if we already have one
-//  if (_id) query.sid = _id;
-//
-//  var transport = new transports[name]({
+    debug("creating transport %s", name.c_str());
+    ValueObject query = _query;
+
+    // append engine.io protocol identifier
+    query["EIO"] = engineio::parser::getProtocolVersion();
+
+    // transport name
+    query["transport"] = name;
+
+    // session id if we already have one
+    if (!_id.empty())
+        query["sid"] = _id;
+
+    ValueObject opts;
+    auto transport = EngineIOTransport::create(name, opts);
+//  auto transport = new transports[name]({
 //    agent: this.agent,
 //    hostname: this.hostname,
 //    port: this.port,
@@ -152,9 +149,7 @@ std::shared_ptr<EngineIOTransport> EngineIOSocket::createTransport(const std::st
 //    localAddress: this.localAddress
 //  });
 //
-//  return transport;
-
-    return nullptr;
+  return transport;
 }
 
 //cjh function clone (obj) {
@@ -169,274 +164,282 @@ std::shared_ptr<EngineIOTransport> EngineIOSocket::createTransport(const std::st
 
 void EngineIOSocket::open()
 {
-//  std::string transportName;
-//  if (_rememberUpgrade && __priorWebsocketSuccess && _transports.find("websocket") != _transports.end()) {
-//    transportName = "websocket";
-//  } else if (_transports.empty()) {
-//    // Emit error on next tick so it can be listened to
-//    setTimeout([this]() {
-//      this->emit("error", "No transports available");
-//    }, 0);
-//    return;
-//  } else {
-//    transportName = _transports[0];
-//  }
-//  _readyState = ReadyState::OPENING;
-//
-//  // Retry with the next transport if the transport is disabled (jsonp: false)
-//  std::shared_ptr<EngineIOTransport> transport = createTransport(transportName);
-//
-//  if (transport == nullptr) {
-//    _transports.erase(_transports.begin())
-//    open();
-//    return;
-//  }
-//
-//  transport->open();
-//  setTransport(transport);
-//};
-//
-//void EngineIOSocket::setTransport(std::shared_ptr<Transport> transport)
-//{
-//  debug("setting transport %s", transport.name);
-//
-//  if (_transport) {
-//    debug("clearing existing transport %s", _transport->getName());
-//    _transport->offAll();
-//  }
-//
-//  // set up transport
-//  _transport = transport;
-//
-//  // set up transport listeners
-//  transport->on("drain", [this]() {
-//    this->onDrain();
-//  });
-//
-//  transport->on("packet", [this](const Packet& packet) {
-//    this->onPacket(packet);
-//  });
-//
-//  transport->on("error", [this](e) {
-//    this->onError(e);
-//  });
-//
-//  transport->on("close", [this]() {
-//    this->onClose("transport close");
-//  });
+  std::string transportName;
+    if (_rememberUpgrade && __priorWebsocketSuccess && std::find(_transports.begin(), _transports.end(), "websocket") != _transports.end()) {
+    transportName = "websocket";
+  } else if (_transports.empty()) {
+    // Emit error on next tick so it can be listened to
+    setTimeout([this]() {
+      this->emit("error", "No transports available");
+    }, 0);
+    return;
+  } else {
+    transportName = _transports[0];
+  }
+  _readyState = ReadyState::OPENING;
+
+  // Retry with the next transport if the transport is disabled (jsonp: false)
+  std::shared_ptr<EngineIOTransport> transport = createTransport(transportName);
+
+  if (transport == nullptr) {
+      _transports.erase(_transports.begin());
+      open();
+      return;
+  }
+
+  transport->open();
+  setTransport(transport);
+}
+
+void EngineIOSocket::setTransport(std::shared_ptr<EngineIOTransport> transport)
+{
+  debug("setting transport %s", transport->getName().c_str());
+
+  if (_transport) {
+    debug("clearing existing transport %s", _transport->getName().c_str());
+    _transport->offAll();
+  }
+
+  // set up transport
+  _transport = transport;
+
+  // set up transport listeners
+  transport->on("drain", [this](const Value&) {
+    this->onDrain();
+  });
+
+  transport->on("packet", [this](const Value& v) {
+      const EngineIOPacket& packet = v.asEngineIOPacket();
+      this->onPacket(packet);
+  });
+
+  transport->on("error", [this](const Value& e) {
+//cjh    this->onError(e);
+  });
+
+  transport->on("close", [this](const Value&) {
+      this->onClose("transport close", "");
+  });
 }
 
 void EngineIOSocket::probe(const std::string& name)
 {
-//  debug("probing transport "%s"", name);
-//  std::shared_ptr<Transport> transport = createTransport(name, { probe: 1 });
-//  bool failed = false;
-//
-//  __priorWebsocketSuccess = false;
-//
-//  // Remove all listeners on the transport and on self
-//  auto cleanup = []() {
-//    transport->off("open", _idOnTransportOpen);
-//    transport->off("error", _idOnerror);
-//    transport->off("close", _idOnTransportClose);
-//    off("close", _idOnclose);
-//    off("upgrading", _idOnupgrade);
-//  };
-//
-//  auto onTransportOpen = [this]() {
-//    if (self.onlyBinaryUpgrades) {
-//      bool upgradeLosesBinary = !this.supportsBinary && _transport.supportsBinary;
-//      failed = failed || upgradeLosesBinary;
-//    }
-//    if (failed) return;
-//
-//    debug("probe transport "%s" opened", name);
-//    transport->send([{ type: "ping', data: 'probe" }]);
-//    transport->once("packet", [this](msg) {
-//      if (failed) return;
-//      if ("pong' == msg.type && 'probe" == msg.data) {
-//        debug("probe transport "%s" pong", name);
-//        _upgrading = true;
-//        emit("upgrading", transport);
-//        if (!transport) return;
-//        __priorWebsocketSuccess = !strcmp("websocket", transport->getName());
-//
-//        debug("pausing current transport "%s"", transport->getName());
-//        transport->pause([]() {
-//          if (failed) return;
-//          if (ReadyState::CLOSED == _readyState) return;
-//          debug("changing transport and sending upgrade packet");
-//
-//          cleanup();
-//
-//          setTransport(transport);
-//          transport->send([{ type: "upgrade" }]);
-//          emit("upgrade", transport);
+  debug("probing transport %s", name.c_str());
+    std::shared_ptr<EngineIOTransport> transport = createTransport(name);//, { probe: 1 });
+    std::shared_ptr<bool> failed = std::make_shared<bool>(false);
+
+  __priorWebsocketSuccess = false;
+
+  // Remove all listeners on the transport and on self
+  auto cleanup = [=]() {
+    transport->off("open", _idOnTransportOpen);
+    transport->off("error", _idOnerror);
+    transport->off("close", _idOnTransportClose);
+    off("close", _idOnclose);
+    off("upgrading", _idOnupgrade);
+  };
+
+  auto onTransportOpen = [=](const Value&) {
+    if (_onlyBinaryUpgrades) {
+        bool upgradeLosesBinary = !_supportsBinary;//cjh && _transport.supportsBinary;
+        *failed = (*failed || upgradeLosesBinary);
+    }
+    if (*failed) return;
+
+    debug("probe transport %s opened", name.c_str());
+      EngineIOPacket p;
+      p.type = "ping";
+      p.data = "probe";
+      std::vector<EngineIOPacket> packets;
+      packets.push_back(std::move(p));
+      transport->send(packets);
+
+    transport->once("packet", [=](const Value& msg) {
+      if (*failed) return;
+
+        const EngineIOPacket& packet = msg.asEngineIOPacket();
+
+      if ("pong" == packet.type && "probe" == packet.data.asString()) {
+        debug("probe transport %s pong", name.c_str());
+        _upgrading = true;
+//cjh        emit("upgrading", transport);
+        if (!transport) return;
+        __priorWebsocketSuccess = "websocket" == transport->getName();
+
+        debug("pausing current transport %s", transport->getName().c_str());
+        transport->pause([=]() {
+          if (failed) return;
+          if (ReadyState::CLOSED == _readyState) return;
+          debug("changing transport and sending upgrade packet");
+
+          cleanup();
+
+          setTransport(transport);
+            EngineIOPacket p2;
+            p2.type = "upgrade";
+
+            std::vector<EngineIOPacket> ps;
+            ps.push_back(p2);
+
+            transport->send(ps);
+//cjh          emit("upgrade", transport);
 //          transport = nullptr;
-//          _upgrading = false;
-//          flush();
-//        });
-//      } else {
-//        debug("probe transport "%s" failed", name);
+          _upgrading = false;
+          flush();
+        });
+      } else {
+        debug("probe transport %s failed", name.c_str());
 //        var err = new Error("probe error");
 //        err.transport = transport->getName();
 //        emit("upgradeError", err);
-//      }
-//    });
-//  };
-//
-//  auto freezeTransport = []() {
-//    if (failed) return;
-//
-//    // Any callback called by transport should be ignored since now
-//    failed = true;
-//
-//    cleanup();
-//
-//    transport->close();
-//    transport = nullptr;
-//  };
-//
-//  // Handle any error that happens while probing
-//  auto onerror = [](err) {
+      }
+    });
+  };
+
+  auto freezeTransport = [=]() {
+    if (*failed) return;
+
+    // Any callback called by transport should be ignored since now
+    *failed = true;
+
+    cleanup();
+
+    transport->close();
+//cjh    transport = nullptr;
+  };
+
+  // Handle any error that happens while probing
+  auto onerror = [=](const Value& err) {
 //    var error = new Error("probe error: " + err);
 //    error.transport = transport->getName();
-//
-//    freezeTransport();
-//
-//    debug("probe transport "%s" failed because of error: %s", name, err);
-//
-//    emit("upgradeError", error);
-//  };
-//
-//  auto onTransportClose = []() {
-//    onerror("transport closed");
-//  };
-//
-//  // When the socket is closed while we're probing
-//  auto onclose = []() {
-//    onerror("socket closed");
-//  };
-//
-//  // When the socket is upgraded while we're probing
-//  auto onupgrade = [](to) {
-//    if (transport && to.name != transport.name) {
-//      debug(""%s" works - aborting "%s"", to.name, transport.name);
-//      freezeTransport();
-//    }
-//  };
-//
-//  transport->once("open", onTransportOpen, grabListenerId(&_idOnTransportOpen));
-//  transport->once("error", onerror, grabListenerId(&_idOnerror));
-//  transport->once("close", onTransportClose, grabListenerId(&_idOnTransportClose));
-//
-//  once("close", onclose, grabListenerId(&_idOnclose));
-//  once("upgrading", onupgrade, grabListenerId(&_idOnupgrade));
-//
-//  transport->open();
+
+    freezeTransport();
+
+//cjh    debug("probe transport %s failed because of error: %s", name.c_str(), err);
+
+//cjh    emit("upgradeError", error);
+  };
+
+  auto onTransportClose = [=](const Value&) {
+    onerror("transport closed");
+  };
+
+  // When the socket is closed while we're probing
+  auto onclose = [=](const Value&) {
+    onerror("socket closed");
+  };
+
+  // When the socket is upgraded while we're probing
+  auto onupgrade = [=](const Value& to) {
+      const std::string& name = to.asString();
+    if (transport && name != transport->getName()) {
+      debug("%s works - aborting %s", name.c_str(), transport->getName().c_str());
+      freezeTransport();
+    }
+  };
+
+  transport->once("open", onTransportOpen, ID(&_idOnTransportOpen));
+  transport->once("error", onerror, ID(&_idOnerror));
+  transport->once("close", onTransportClose, ID(&_idOnTransportClose));
+
+  once("close", onclose, ID(&_idOnclose));
+  once("upgrading", onupgrade, ID(&_idOnupgrade));
+
+  transport->open();
 }
 
 void EngineIOSocket::onOpen()
 {
-//  debug("socket open");
-//  _readyState = ReadyState::OPEN;
-//  __priorWebsocketSuccess = !strcmp("websocket", _transport->getName());
-//  emit("open");
-//  flush();
-//
-//  // we check for `readyState` in case an `open`
-//  // listener already closed the socket
-//  if (ReadyState::OPEN == _readyState && _upgrade && _transport->pause) {
-//    debug("starting upgrade probes");
-//    for (auto& upgrade : _upgrades)
-//    {
-//      probe(upgrade);
-//    }
-//  }
+  debug("socket open");
+  _readyState = ReadyState::OPENED;
+  __priorWebsocketSuccess = "websocket" == _transport->getName();
+  emit("open");
+  flush();
+
+  // we check for `readyState` in case an `open`
+  // listener already closed the socket
+  if (ReadyState::OPENED == _readyState && _upgrade && _transport->isSupportPaused()) {
+    debug("starting upgrade probes");
+    for (auto& upgrade : _upgrades)
+    {
+      probe(upgrade);
+    }
+  }
 }
 
 void EngineIOSocket::onPacket(const EngineIOPacket& packet)
 {
-//  if (ReadyState::OPENING == _readyState || ReadyState::OPEN == _readyState ||
-//      ReadyState::CLOSING == _readyState) {
-//    debug("socket receive: type "%s", data "%s"", packet.type, packet.data);
-//
-//    this.emit("packet", packet);
-//
-//    // Socket is live - any packet counts
-//    this.emit("heartbeat");
-//
-//    switch (packet.type) {
-//      case "open":
-//        this.onHandshake(parsejson(packet.data));
-//        break;
-//
-//      case "pong":
-//        this.setPing();
-//        this.emit("pong");
-//        break;
-//
-//      case "error":
+  if (ReadyState::OPENING == _readyState || ReadyState::OPENED == _readyState ||
+      ReadyState::CLOSING == _readyState) {
+    debug("socket receive: type %s, data %s", packet.type.c_str(), packet.data.toString().c_str());
+
+//cjh    emit("packet", packet);
+
+    // Socket is live - any packet counts
+    emit("heartbeat");
+
+      if (packet.type == "open") {
+        onHandshake(parsejson(packet.data.asString()));
+      } else if (packet.type == "pong") {
+        setPing();
+        emit("pong");
+      } else if (packet.type == "error") {
 //        var err = new Error("server error");
 //        err.code = packet.data;
 //        this.onError(err);
-//        break;
-//
-//      case "message":
-//        this.emit("data", packet.data);
-//        this.emit("message", packet.data);
-//        break;
-//    }
-//  } else {
-//    debug("packet received with socket readyState "%d"", _readyState);
-//  }
+      } else if (packet.type == "message") {
+        emit("data", packet.data);
+        emit("message", packet.data);
+      }
+  } else {
+    debug("packet received with socket readyState %d", _readyState);
+  }
 }
 
-void EngineIOSocket::onHandshake(const Value& data)
+void EngineIOSocket::onHandshake(const ValueObject& data)
 {
-//  emit("handshake", data);
-//  _id = data.sid;
-//  _transport->query.sid = data.sid;
-//  _upgrades = filterUpgrades(data.upgrades);
-//  _pingInterval = data.pingInterval;
-//  _pingTimeout = data.pingTimeout;
-//  onOpen();
-//  // In case open handler closes socket
-//  if (ReadyState::CLOSED == _readyState)
-//    return;
-//
-//  setPing();
-//  // Prolong liveness of socket on heartbeat
-//  off("heartbeat", _heartbeatId);
-//  on("heartbeat", std::bind(EngineIOSocket::onHeartbeat, this), grabListenerId(&_heartbeatId));
+    emit("handshake", data);
+    _id = data.at("sid").asString();
+    _transport->_query["sid"] = _id;
+    _upgrades = filterUpgrades(data.at("upgrades").asArray());
+    _pingInterval = data.at("pingInterval").asInt();
+    _pingTimeout = data.at("pingTimeout").asInt();
+    onOpen();
+    // In case open handler closes socket
+    if (ReadyState::CLOSED == _readyState)
+        return;
+
+    setPing();
+    // Prolong liveness of socket on heartbeat
+    off("heartbeat", _heartbeatId);
+    on("heartbeat", std::bind(&EngineIOSocket::onHeartbeat, this, std::placeholders::_1), ID(&_heartbeatId));
 }
 
-void EngineIOSocket::onHeartbeat(float timeout)
+void EngineIOSocket::onHeartbeat(const Value& timeout)
 {
-//  clearTimeout(this.pingTimeoutTimer);
-//  var self = this;
-//  self.pingTimeoutTimer = setTimeout([] () {
-//    if (ReadyState::CLOSED == _readyState)
-//      return;
-//    self.onClose("ping timeout");
-//  }, timeout || (_pingInterval + _pingTimeout));
+  clearTimeout(_pingTimeoutTimer);
+  _pingTimeoutTimer = setTimeout([=] () {
+    if (ReadyState::CLOSED == _readyState)
+      return;
+    onClose("ping timeout", "");
+  }, timeout.getType() == Value::Type::INTEGER ? timeout.asInt() : (_pingInterval + _pingTimeout));
 }
 
 void EngineIOSocket::setPing()
 {
-//  clearTimeout(self.pingIntervalTimer);
-//  self.pingIntervalTimer = setTimeout([] () {
-//    debug("writing ping packet - expecting pong within %sms", self.pingTimeout);
-//    self.ping();
-//    self.onHeartbeat(self.pingTimeout);
-//  }, self.pingInterval);
+  clearTimeout(_pingIntervalTimer);
+  _pingIntervalTimer = setTimeout([=] () {
+    debug("writing ping packet - expecting pong within %ldms", _pingTimeout);
+    ping();
+    onHeartbeat(Value((int)_pingTimeout));
+  }, _pingInterval);
 }
 
 void EngineIOSocket::ping()
 {
-//  sendPacket("ping", [this]() {
-//    emit("ping");
-//  });
+    sendPacket("ping", Value::NONE, ValueObject(), [this](const Value& unused) {
+        emit("ping");
+    });
 }
 
 void EngineIOSocket::onDrain()
@@ -457,77 +460,77 @@ void EngineIOSocket::onDrain()
 
 void EngineIOSocket::flush()
 {
-//  if (ReadyState::CLOSED != _readyState && _transport->isWritable() &&
-//    !_upgrading && !_writeBuffer.empty()) {
-//    debug("flushing %d packets in socket", _writeBuffer.size());
-//    _transport->send(_writeBuffer);
-//    // keep track of current length of writeBuffer
-//    // splice writeBuffer and callbackBuffer on `drain`
-//    _prevBufferLen = _writeBuffer.size();
-//    emit("flush");
-//  }
+  if (ReadyState::CLOSED != _readyState && _transport->isWritable() &&
+    !_upgrading && !_writeBuffer.empty()) {
+    debug("flushing %d packets in socket", (int)_writeBuffer.size());
+    _transport->send(_writeBuffer);
+    // keep track of current length of writeBuffer
+    // splice writeBuffer and callbackBuffer on `drain`
+    _prevBufferLen = _writeBuffer.size();
+    emit("flush");
+  }
 }
 
 // write
-void EngineIOSocket::send(const Value& msg, const Opts& options, const std::function<void()>& fn)
+void EngineIOSocket::send(const Value& msg, const ValueObject& options, const std::function<void(const Value&)>& fn)
 {
-  sendPacket("message", msg, options, fn);
+    sendPacket("message", msg, options, fn);
 }
 
-void EngineIOSocket::sendPacket(const std::string& type, const Value& data, const Opts& options, const std::function<void()>& fn)
+void EngineIOSocket::sendPacket(const std::string& type, const Value& data, const ValueObject& options, const std::function<void(const Value&)>& fn)
 {
-//  if (ReadyState::CLOSING == _readyState || ReadyState::CLOSED == _readyState) {
-//    return;
-//  }
-//
-//  var packet = {
-//    type: type,
-//    data: data,
-//    options: options
-//  };
-//  this.emit("packetCreate", packet);
-//  _writeBuffer.push_back(packet);
-//  if (fn) this.once("flush", fn);
-//  this.flush();
+  if (ReadyState::CLOSING == _readyState || ReadyState::CLOSED == _readyState) {
+    return;
+  }
+
+    EngineIOPacket packet;
+    packet.type = type;
+    packet.data = data;
+    packet.options = options;
+
+//cjh  emit("packetCreate", packet);
+  _writeBuffer.push_back(packet);
+  if (fn) once("flush", fn);
+  flush();
 }
 //
 void EngineIOSocket::close()
 {
-//  auto closeTransport = []() {
-//    onClose("forced close");
-//    debug("socket closing - telling transport to close");
-//    _transport->close();
-//  };
-//
-//  auto cleanupAndClose = []() {
-//    off("upgrade", _idCleanupAndCloseUpgrade);
-//    off("upgradeError", _idCleanupAndCloseUpgradeError);
-//    closeTransport();
-//  };
-//
-//  auto waitForUpgrade = []() {
-//    // wait for upgrade to finish since we can't send packets while pausing a transport
-//    once("upgrade", cleanupAndClose, grabListenerId(&_idCleanupAndCloseUpgrade));
-//    once("upgradeError", cleanupAndClose, grabListenerId(&_idCleanupAndCloseUpgradeError));
-//  };
-//
-//  if (ReadyState::OPENING == _readyState || ReadyState::OPEN == _readyState) {
-//    _readyState = ReadyState::CLOSING;
-//
-//    if (!_writeBuffer.empty()) {
-//      once("drain", []() {
-//        if (_upgrading) {
-//          waitForUpgrade();
-//        } else {
-//          closeTransport();
-//        }
-//      });
-//    } else if (_upgrading) {
-//      waitForUpgrade();
-//    } else {
-//      closeTransport();
-//    }
-//  }
+  auto closeTransport = [=](const Value&) {
+      onClose("forced close", "");
+      debug("socket closing - telling transport to close");
+      _transport->close();
+  };
+
+  auto cleanupAndClose = [=](const Value&) {
+      off("upgrade", _idCleanupAndCloseUpgrade);
+      off("upgradeError", _idCleanupAndCloseUpgradeError);
+      closeTransport(Value::NONE);
+  };
+
+  auto waitForUpgrade = [=]() {
+    // wait for upgrade to finish since we can't send packets while pausing a transport
+      once("upgrade", cleanupAndClose, ID(&_idCleanupAndCloseUpgrade));
+      once("upgradeError", cleanupAndClose, ID(&_idCleanupAndCloseUpgradeError));
+  };
+
+  if (ReadyState::OPENING == _readyState || ReadyState::OPENED == _readyState) {
+    _readyState = ReadyState::CLOSING;
+
+    if (!_writeBuffer.empty()) {
+      once("drain", [=](const Value&) {
+        if (_upgrading) {
+          waitForUpgrade();
+        } else {
+            closeTransport(Value::NONE);
+        }
+      });
+    } else if (_upgrading) {
+        waitForUpgrade();
+    } else {
+        closeTransport(Value::NONE);
+    }
+  }
 }
 
 void EngineIOSocket::onError(const std::string& err)
@@ -540,36 +543,39 @@ void EngineIOSocket::onError(const std::string& err)
 
 void EngineIOSocket::onClose(const std::string& reason, const std::string& desc)
 {
-//  if (ReadyState::OPENING == _readyState || ReadyState::OPEN == _readyState || ReadyState::CLOSING == _readyState) {
-//    debug("socket close with reason: "%s"", reason);
-//
-//    // clear timers
-//    clearTimeout(this.pingIntervalTimer);
-//    clearTimeout(this.pingTimeoutTimer);
-//
-//    // stop event from firing again for transport
-//    _transport->off("close");
-//
-//    // ensure transport won't stay open
-//    _transport->close();
-//
-//    // ignore further transport communication
-//    _transport->offAll();
-//
-//    // set ready state
-//    _readyState = ReadyState::CLOSED;
-//
-//    // clear session id
-//    _id = "";
-//
-//    // emit close event
-//    emit("close", reason, desc);
-//
-//    // clean buffers after, so users can still
-//    // grab the buffers on `close` event
-//    self.writeBuffer = [];
-//    self.prevBufferLen = 0;
-//  }
+  if (ReadyState::OPENING == _readyState || ReadyState::OPENED == _readyState || ReadyState::CLOSING == _readyState) {
+    debug("socket close with reason: %s", reason.c_str());
+
+    // clear timers
+    clearTimeout(_pingIntervalTimer);
+    clearTimeout(_pingTimeoutTimer);
+
+    // stop event from firing again for transport
+    _transport->off("close");
+
+    // ensure transport won't stay open
+    _transport->close();
+
+    // ignore further transport communication
+    _transport->offAll();
+
+    // set ready state
+    _readyState = ReadyState::CLOSED;
+
+    // clear session id
+    _id = "";
+
+    // emit close event
+      ValueArray args;
+      args.push_back(reason);
+      args.push_back(desc);
+      emit("close", args);
+
+    // clean buffers after, so users can still
+    // grab the buffers on `close` event
+    _writeBuffer.clear();
+    _prevBufferLen = 0;
+  }
 }
 
 /**
@@ -580,12 +586,12 @@ void EngineIOSocket::onClose(const std::string& reason, const std::string& desc)
  *
  */
 
-std::vector<std::string> EngineIOSocket::filterUpgrades(const std::vector<std::string>& upgrades)
+std::vector<std::string> EngineIOSocket::filterUpgrades(const ValueArray& upgrades)
 {
     std::vector<std::string> filteredUpgrades;
-  for (size_t i = 0, j = upgrades.size(); i < j; i++) {
-      if (std::find(_transports.begin(), _transports.end(), upgrades[i]) != _transports.end())
-        filteredUpgrades.push_back(upgrades[i]);
-  }
-  return filteredUpgrades;
+    for (size_t i = 0, j = upgrades.size(); i < j; i++) {
+        if (std::find(_transports.begin(), _transports.end(), upgrades[i].asString()) != _transports.end())
+            filteredUpgrades.push_back(upgrades[i].asString());
+    }
+    return filteredUpgrades;
 }

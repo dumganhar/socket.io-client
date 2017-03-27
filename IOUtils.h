@@ -26,3 +26,7 @@ std::string utf8Decode(const std::string& str);
 
 std::string base64Encode(const Buffer& buf);
 Buffer base64Decode(const std::string& str);
+
+ValueObject parsejson(const std::string& str);
+
+std::string queryToString(const ValueObject& obj);

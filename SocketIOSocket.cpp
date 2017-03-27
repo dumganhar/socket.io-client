@@ -66,33 +66,37 @@ void SocketIOSocket::open()
   emit("connecting");
 }
 
-void SocketIOSocket::send(Args& args)
+void SocketIOSocket::send(const Value& args)
 {
   emit("message", args);
 }
 
 void SocketIOSocket::emit(const Value& args)
 {
-    //cjh
-}
+    assert(args.getType() == Value::Type::ARRAY);
 
-void SocketIOSocket::emit(const std::string& eventName, const Value& args)
-{
-  if (std::find(__events.begin(), __events.end(), eventName) != __events.end())
-  {
-    Emitter::emit(eventName, args);
-    return;
-  }
+    ValueArray arguments = args.asArray();
+    if (arguments.empty()) return;
 
-  SocketIOPacket::Type parserType = SocketIOPacket::Type::EVENT; // default
-  if (args.hasBin()) {
-    parserType = SocketIOPacket::Type::BINARY_EVENT;
-  } // binary
-  SocketIOPacket packet;
-  packet.type = parserType;
-  packet.options["compress"] = _compress;
+    const Value& event = arguments.at(0);
+    assert(event.getType() == Value::Type::STRING);
 
-  ValueArray arguments = Value::concat(eventName, args);
+    const std::string& eventName = event.asString();
+
+    if (std::find(__events.begin(), __events.end(), eventName) != __events.end())
+    {
+        Emitter::emit(eventName, args);
+        return;
+    }
+
+    SocketIOPacket::Type parserType = SocketIOPacket::Type::EVENT; // default
+    if (args.hasBin()) {
+        parserType = SocketIOPacket::Type::BINARY_EVENT;
+    } // binary
+
+    SocketIOPacket packet;
+    packet.type = parserType;
+    packet.options["compress"] = _compress;
 
     // event ack callback
     if (arguments[arguments.size() - 1].getType() == Value::Type::FUNCTION) {
@@ -102,13 +106,19 @@ void SocketIOSocket::emit(const std::string& eventName, const Value& args)
         arguments.pop_back();
     }
 
-  packet.data = arguments;
+    packet.data = arguments;
 
-  if (_connected) {
-    sendPacket(packet);
-  } else {
-    _sendBuffer.push_back(packet);
-  }
+    if (_connected) {
+        sendPacket(packet);
+    } else {
+        _sendBuffer.push_back(packet);
+    }
+}
+
+void SocketIOSocket::emit(const std::string& eventName, const Value& args)
+{
+    ValueArray arguments = Value::concat(eventName, args);
+    emit(arguments);
 }
 
 void SocketIOSocket::sendPacket(const SocketIOPacket& packet)
@@ -146,7 +156,7 @@ void SocketIOSocket::onclose(const Value& reason)
 
 void SocketIOSocket::onpacket(const Value& v)
 {
-  const SocketIOPacket& packet = v.asPacket();
+  const SocketIOPacket& packet = v.asSocketIOPacket();
   if (packet.nsp != _nsp) return;
 
   switch (packet.type) {
@@ -270,7 +280,7 @@ void SocketIOSocket::destroy()
     _subs.clear();
   }
 
-//cjh  _io->destroySocket(this);
+  _io->destroySocket(shared_from_this());
 }
 
 // disconnect

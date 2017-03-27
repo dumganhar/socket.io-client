@@ -7,6 +7,9 @@
 class EngineIOTransport : public Emitter
 {
 public:
+
+    static std::shared_ptr<EngineIOTransport> create(const std::string& name, const ValueObject& opts);
+
     virtual ~EngineIOTransport();
 
     bool init(const Opts& opts);
@@ -14,6 +17,10 @@ public:
     bool open();
     void close();
     bool send(const std::vector<EngineIOPacket>& packets);
+    virtual void pause(const std::function<void()>& fn) {}
+
+    virtual bool isSupportPaused() const = 0;
+
     bool isWritable() const { return _writable; }
 
     virtual void onOpen();
@@ -34,13 +41,16 @@ public:
     virtual void doClose() = 0;
     virtual const std::string& getName() const = 0;
 
-private:
+protected:
+    EngineIOTransport();
+
+public:
 
     std::string _path;
     std::string _hostname;
     uint16_t _port;
     bool _secure;
-    std::string _query;
+    ValueObject _query;
     // _timestampParam;
     // _timestampRequests;
     ReadyState _readyState;

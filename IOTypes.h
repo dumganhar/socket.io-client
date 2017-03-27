@@ -41,11 +41,14 @@ private:
 };
 
 class Value;
+class EngineIOPacket;
 class SocketIOPacket;
 
 using ValueArray = std::vector<Value>;
 using ValueObject = std::unordered_map<std::string, Value>;
 using ValueFunction = std::function<void(const Value&)>;
+
+extern ValueObject OBJECT_NONE;
 
 class Value
 {
@@ -63,7 +66,8 @@ public:
         ARRAY,
         OBJECT,
         FUNCTION,
-        PACKET
+        ENGINEIO_PACKET,
+        SOCKETIO_PACKET
     };
 
     Type getType() const;
@@ -78,8 +82,10 @@ public:
     explicit Value(float floatVal);
     Value(const ValueArray& arrVal);
     Value(const ValueObject& objVal);
-    Value(const SocketIOPacket& packet);
     Value(const ValueFunction& func);
+    Value(const EngineIOPacket& packet);
+    Value(const SocketIOPacket& packet);
+
     ~Value();
 
     Value& operator=(const Value& o);
@@ -91,8 +97,9 @@ public:
     Value& operator=(float floatVal);
     Value& operator=(const ValueArray& arrVal);
     Value& operator=(const ValueObject& objVal);
-    Value& operator=(const SocketIOPacket& packet);
     Value& operator=(const ValueFunction& func);
+    Value& operator=(const EngineIOPacket& packet);
+    Value& operator=(const SocketIOPacket& packet);
 
     const std::string& asString() const;
     const Buffer& asBuffer() const;
@@ -101,7 +108,8 @@ public:
     float asFloat() const;
     const ValueArray& asArray() const;
     const ValueObject& asObject() const;
-    const SocketIOPacket& asPacket() const;
+    const EngineIOPacket& asEngineIOPacket() const;
+    const SocketIOPacket& asSocketIOPacket() const;
     const ValueFunction& asFunction() const;
 
     bool isValid() const;
@@ -122,7 +130,8 @@ private:
         ValueArray* arr;
         ValueObject* obj;
         ValueFunction* func;
-        SocketIOPacket* packet;
+        EngineIOPacket* ep;
+        SocketIOPacket* sp;
     } _u;
 
     Type _type;
@@ -140,6 +149,7 @@ public:
 
     std::string type;
     Value data;
+    ValueObject options;
 };
 
 class SocketIOPacket
@@ -201,7 +211,7 @@ public:
     int id;
     std::string nsp;
     Type type;
-    std::string query;
+    ValueObject query;
     int attachments;  // -1 means not useful
     Value data;
     ValueObject options;
@@ -221,7 +231,7 @@ struct Opts
 {
     bool multiplex; // reuse an existing Manager for subsequent calls, unless the multiplex option is passed with false
     bool forceNew; // force new connection
-    std::string query;
+    ValueObject query;
     std::string path;// (String) name of the path that is captured on the server side (/socket.io)
     bool reconnection;// (Boolean) whether to reconnect automatically (true)
     int reconnectionAttempts;// (Number) number of reconnection attempts before giving up (Infinity)
@@ -238,7 +248,9 @@ struct Opts
 };
 
 using ListenerId = uint64_t;
-using TimerHandle = uint64_t;
+using TimerHandle = int64_t;
+
+extern TimerHandle INVALID_TIMER_HANDLE;
 
 #define debug(...) printf(__VA_ARGS__)
 

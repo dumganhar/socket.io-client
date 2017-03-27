@@ -38,3 +38,13 @@ Buffer base64Decode(const std::string& str)
 {
     return Buffer(nullptr, 0);
 }
+
+ValueObject parsejson(const std::string& str)
+{
+    return ValueObject();
+}
+
+std::string queryToString(const ValueObject& obj)
+{
+    return "";
+}

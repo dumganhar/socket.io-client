@@ -32,16 +32,11 @@ public:
      * @return {Socket} for chaining.
      * @api public
      */
-    void send(const Value& msg, const Opts& options, const std::function<void()>& fn = nullptr);
+    void send(const Value& msg, const ValueObject& options = OBJECT_NONE, const std::function<void(const Value&)>& fn = nullptr);
 
     const std::string& getId() const { return _id; }
 
-    /**
-     * Called when connection is deemed open.
-     *
-     * @api public
-     */
-    void onOpen();
+
 
     /**
      * Closes the connection.
@@ -51,6 +46,13 @@ public:
     void close();
 
 private:
+
+    /**
+     * Called when connection is deemed open.
+     *
+     * @api public
+     */
+    void onOpen();
 
     /**
      * Initializes transport to use and starts probe.
@@ -102,7 +104,7 @@ private:
      * @param {Function} callback function.
      * @api private
      */
-    void sendPacket(const std::string& type, const Value& data, const Opts& options, const std::function<void()>& fn);
+    void sendPacket(const std::string& type, const Value& data, const ValueObject& options, const std::function<void(const Value&)>& fn);
 
     /**
      * Called upon transport close.
@@ -136,7 +138,7 @@ private:
      * @api private
      */
 
-    void onHandshake(const Value& data);
+    void onHandshake(const ValueObject& data);
 
     /**
      * Resets ping timeout.
@@ -144,7 +146,7 @@ private:
      * @api private
      */
 
-    void onHeartbeat(float timeout);
+    void onHeartbeat(const Value& timeout);
 
     /**
      * Pings server every `this.pingInterval` and expects response
@@ -171,7 +173,7 @@ private:
      *
      */
 
-    std::vector<std::string> filterUpgrades(const std::vector<std::string>& upgrades);
+    std::vector<std::string> filterUpgrades(const ValueArray& upgrades);
 
     std::string _id;
     std::vector<std::string> _transports;
@@ -180,17 +182,28 @@ private:
     std::vector<EngineIOPacket> _writeBuffer;
 
     std::shared_ptr<EngineIOTransport> _transport;
+
+    ValueObject _query;
+    
+
     ReadyState _readyState;
     bool _rememberUpgrade;
     bool _upgrading;
     bool _upgrade;
 
-    float _pingInterval;
-    float _pingTimeout;
+    TimerHandle _pingIntervalTimer;
+    TimerHandle _pingTimeoutTimer;
+
+    long _pingInterval;
+    long _pingTimeout;
 
     ListenerId _heartbeatId;
 
     size_t _prevBufferLen;
+    bool _onlyBinaryUpgrades;
+    bool _perMessageDeflate;
+
+    bool _supportsBinary;
 
     // Listener Ids
     ListenerId _idOnTransportOpen;

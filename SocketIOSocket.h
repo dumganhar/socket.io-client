@@ -4,7 +4,7 @@
 
 class SocketIOManager;
 
-class SocketIOSocket : public Emitter
+class SocketIOSocket : public Emitter, public std::enable_shared_from_this<SocketIOSocket>
 {
 public:
 
@@ -21,8 +21,7 @@ public:
      *
      * @api public
      */
-
-    void open();
+    void open();// connect
 
     /**
      * Sends a `message` event.
@@ -31,7 +30,7 @@ public:
      * @api public
      */
 
-    void send(Args& args);
+    void send(const Value& args);
 
     /**
      * Disconnects the socket manually.
@@ -39,7 +38,7 @@ public:
      * @return {Socket} self
      * @api public
      */
-    void close(); // disconnect
+    void close();// disconnect
 
     /**
      * Sets the compress flag.
@@ -163,7 +162,7 @@ private:
 private:
     std::shared_ptr<SocketIOManager> _io;
     std::string _nsp;
-    std::string _query;
+    ValueObject _query;
     std::string _id; // An unique identifier for the socket session. Set after the connect event is triggered, and updated after the reconnect event.
     int _ids;
     std::unordered_map<int, ValueFunction> _acks;

@@ -162,6 +162,8 @@ void Buffer::setData(off_t offset, const uint8_t* data, size_t len)
 
 ///
 
+ValueObject OBJECT_NONE;
+
 Value Value::NONE = Value();
 
 Value::Type Value::getType() const
@@ -204,8 +206,11 @@ Value::Value(const Value& o)
         case Type::FUNCTION:
             _u.func = new ValueFunction(*o._u.func);
             break;
-        case Type::PACKET:
-            _u.packet = new SocketIOPacket(*o._u.packet);
+        case Type::ENGINEIO_PACKET:
+            _u.ep = new EngineIOPacket(*o._u.ep);
+            break;
+        case Type::SOCKETIO_PACKET:
+            _u.sp = new SocketIOPacket(*o._u.sp);
             break;
         default:
             break;
@@ -260,10 +265,16 @@ Value::Value(const ValueObject& objVal)
     _u.obj = new ValueObject(objVal);
 }
 
+Value::Value(const EngineIOPacket& packet)
+{
+    _type = Type::ENGINEIO_PACKET;
+    _u.ep = new EngineIOPacket(packet);
+}
+
 Value::Value(const SocketIOPacket& packet)
 {
-    _type = Type::PACKET;
-    _u.packet = new SocketIOPacket(packet);
+    _type = Type::SOCKETIO_PACKET;
+    _u.sp = new SocketIOPacket(packet);
 }
 
 Value::Value(const ValueFunction& func)
@@ -308,8 +319,11 @@ Value& Value::operator=(const Value& o)
             case Type::FUNCTION:
                 _u.func = new ValueFunction(*o._u.func);
                 break;
-            case Type::PACKET:
-                _u.packet = new SocketIOPacket(*o._u.packet);
+            case Type::ENGINEIO_PACKET:
+                _u.ep = new EngineIOPacket(*o._u.ep);
+                break;
+            case Type::SOCKETIO_PACKET:
+                _u.sp = new SocketIOPacket(*o._u.sp);
                 break;
             default:
                 break;
@@ -390,12 +404,21 @@ Value& Value::operator=(const ValueObject& objVal)
     return *this;
 }
 
+Value& Value::operator=(const EngineIOPacket& packet)
+{
+    if (_type != Type::ENGINEIO_PACKET)
+        reset();
+    _type = Type::ENGINEIO_PACKET;
+    _u.ep = new EngineIOPacket(packet);
+    return *this;
+}
+
 Value& Value::operator=(const SocketIOPacket& packet)
 {
-    if (_type != Type::PACKET)
+    if (_type != Type::SOCKETIO_PACKET)
         reset();
-    _type = Type::PACKET;
-    _u.packet = new SocketIOPacket(packet);
+    _type = Type::SOCKETIO_PACKET;
+    _u.sp = new SocketIOPacket(packet);
     return *this;
 }
 
@@ -443,9 +466,14 @@ const ValueObject& Value::asObject() const
     return *_u.obj;
 }
 
-const SocketIOPacket& Value::asPacket() const
+const SocketIOPacket& Value::asSocketIOPacket() const
 {
-    return *_u.packet;
+    return *_u.sp;
+}
+
+const EngineIOPacket& Value::asEngineIOPacket() const
+{
+    return *_u.ep;
 }
 
 const ValueFunction& Value::asFunction() const
@@ -520,9 +548,13 @@ void Value::reset()
             delete _u.func;
             _u.func = nullptr;
             break;
-        case Type::PACKET:
-            delete _u.packet;
-            _u.packet = nullptr;
+        case Type::ENGINEIO_PACKET:
+            delete _u.ep;
+            _u.ep = nullptr;
+            break;
+        case Type::SOCKETIO_PACKET:
+            delete _u.sp;
+            _u.sp = nullptr;
             break;
         default:
             break;
@@ -573,8 +605,11 @@ std::string Value::toString() const
         case Type::FUNCTION:
             ss << "Function";
             break;
-        case Type::PACKET:
-            ss << "Packet";
+        case Type::ENGINEIO_PACKET:
+            ss << "EngineIOPacket";
+            break;
+        case Type::SOCKETIO_PACKET:
+            ss << "SocketIOPacket";
             break;
         default:
             assert(false);
@@ -715,4 +750,7 @@ bool Opts::isValid() const
 {
     return false;
 }
+
+
+TimerHandle INVALID_TIMER_HANDLE = -1;
 
