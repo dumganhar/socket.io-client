@@ -33,7 +33,7 @@ EngineIORequest::EngineIORequest(const ValueObject& opts)
 //  // other options for Node.js client
 //  this.extraHeaders = opts.extraHeaders;
 //
-//  this.create();
+    create();
 }
 
 EngineIORequest::~EngineIORequest()

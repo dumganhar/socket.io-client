@@ -82,28 +82,8 @@ void Emitter::off(const std::string& eventName, int64_t key)
 
 void Emitter::emit(const std::string& eventName, const Value& args)
 {
-    auto iter = _callbacks.find(eventName);
-    if (iter != _callbacks.end())
-    {
-        ValueArray arguments;
-        arguments.push_back(eventName);
-        if (args.getType() == Value::Type::ARRAY)
-        {
-            const ValueArray& arr = args.asArray();
-            arguments.reserve(arr.size() + 1);
-            arguments.insert(arguments.end(), arr.begin(), arr.end());
-        }
-        else
-        {
-            arguments.push_back(args);
-        }
-
-        std::vector<Callback> copied = iter->second;
-        for (const auto& cb : copied)
-        {
-            cb.fn(arguments);
-        }
-    }
+    ValueArray arguments = Value::concat(eventName, args);
+    Emitter::emit(arguments);
 }
 
 void Emitter::emit(const Value& args)
@@ -115,6 +95,18 @@ void Emitter::emit(const Value& args)
             return;
 
         std::string eventName = arguments[0].asString();
+
+        auto iter = _callbacks.find(eventName);
+        if (iter != _callbacks.end())
+        {
+            std::vector<Callback> copied = iter->second;
+            for (const auto& cb : copied)
+            {
+                cb.fn(args);
+            }
+        }
+    } else if (args.getType() == Value::Type::STRING) {
+        std::string eventName = args.asString();
 
         auto iter = _callbacks.find(eventName);
         if (iter != _callbacks.end())

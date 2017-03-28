@@ -2,6 +2,7 @@
 #include "IOUtils.h"
 #include "EngineIOParser.h"
 
+
 EngineIOWebSocket::EngineIOWebSocket(const ValueObject& opts)
 : EngineIOTransport(opts)
 {
@@ -64,33 +65,41 @@ bool EngineIOWebSocket::doOpen()
 //    opts.localAddress = this.localAddress;
 //  }
 
-//  _ws = new WebSocket(uri, protocols, opts);
-//
-//  if (_ws == nullptr) {
-//    return this.emit("error", err);
-//  }
+    _ws = getWebSocketFactory()->create();
 
-  _supportsBinary = true;
+    std::string uri;
+    std::vector<std::string> protocols;
 
-  addEventListeners();
+    bool r = _ws->open(uri, protocols, "");
+    if (!r) {
+        emit("error");
+        return false;
+    }
+
+    _supportsBinary = true;
+
+    addEventListeners();
 
     return true;
 }
 
 void EngineIOWebSocket::addEventListeners()
 {
-//  _ws->onopen = function () {
-//    self.onOpen();
-//  };
-//  _ws->onclose = function () {
-//    self.onClose();
-//  };
-//  _ws->onmessage = function (ev) {
-//    self.onData(ev.data);
-//  };
-//  _ws->onerror = function (e) {
-//    self.onError("websocket error", e);
-//  };
+    _ws->onopen = [this]() {
+      onOpen();
+    };
+
+    _ws->onclose = [this](const std::string& reason) {
+      onClose();
+    };
+
+    _ws->onmessage = [this](const Buffer& ev) {
+      onData(ev);
+    };
+
+    _ws->onerror = [this](const std::string& e) {
+        onError("websocket error", e);
+    };
 }
 
 void EngineIOWebSocket::pause(const std::function<void()>& fn)
@@ -118,7 +127,7 @@ bool EngineIOWebSocket::write(const std::vector<EngineIOPacket>& packets)
     for (const auto& packet : packets)
     {
         Value encodedPacket = engineio::parser::encodePacket(packet, _supportsBinary, false);
-//        _ws->send(encodedPacket);
+        _ws->send(encodedPacket);
     }
 
     if (!packets.empty())
@@ -136,7 +145,7 @@ void EngineIOWebSocket::onClose()
 
 void EngineIOWebSocket::doClose()
 {
-//    _ws->close();
+    _ws->close();
 }
 
 /**

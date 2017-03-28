@@ -2,6 +2,8 @@
 
 #include "EngineIOTransport.h"
 
+class IWebSocket;
+
 class EngineIOWebSocket : public EngineIOTransport
 {
 public:
@@ -24,7 +26,7 @@ private:
      */
     void addEventListeners();
 
-//    WebSocket* _ws;
+    std::shared_ptr<IWebSocket> _ws;
 
     bool _supportsBinary;
     bool _perMessageDeflate;

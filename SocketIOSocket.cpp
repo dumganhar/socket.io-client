@@ -118,7 +118,7 @@ void SocketIOSocket::emit(const Value& args)
 void SocketIOSocket::emit(const std::string& eventName, const Value& args)
 {
     ValueArray arguments = Value::concat(eventName, args);
-    emit(arguments);
+    SocketIOSocket::emit(arguments);
 }
 
 void SocketIOSocket::sendPacket(const SocketIOPacket& packet)

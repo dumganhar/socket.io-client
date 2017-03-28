@@ -13,13 +13,6 @@ const std::string& EngineIOPolling::getName() const
     return name;
 }
 
-/**
- * Opens the socket (triggers polling). We write a PING message to determine
- * when the transport is open.
- *
- * @api private
- */
-
 bool EngineIOPolling::doOpen()
 {
     poll();

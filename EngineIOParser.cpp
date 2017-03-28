@@ -88,14 +88,14 @@ Value encodePacket(const EngineIOPacket& packet, bool supportsBinary, bool utf8e
 
   // data fragment is optional
   if (packet.data.isValid()) {
-//cjh    if (utf8encode)
-//    {
-//      encoded << utf8Encode(String(packet.data));
-//    }
-//    else
-//    {
-//      encoded << String(packet.data);
-//    }
+    if (utf8encode)
+    {
+      encoded << utf8Encode(packet.data.asString());
+    }
+    else
+    {
+      encoded << packet.data.asString();
+    }
   }
 
   return encoded.str();
@@ -324,66 +324,64 @@ static EngineIOPacket decodePayloadAsBinary(const Value& data, bool binaryType)
  * @api public
  */
 
-EngineIOPacket decodePayload(const Value& data)
+EngineIOPacket decodePayload(const Value& d)
 {
-//  if ("string" != typeof data) {
-//    return exports.decodePayloadAsBinary(data, binaryType, callback);
-//  }
-//
-//  if (typeof binaryType == "function") {
-//    callback = binaryType;
-//    binaryType = null;
-//  }
-//
-//  var packet;
-//  if (data == "") {
-//    // parser error - ignoring payload
-//    return callback(err, 0, 1);
-//  }
-//
-//  var length = ""
-//    , n, msg;
-//
-//  for (var i = 0, l = data.length; i < l; i++) {
-//    var chr = data.charAt(i);
-//
-//    if (":" != chr) {
-//      length += chr;
-//    } else {
-//      if ("" == length || (length != (n = Number(length)))) {
-//        // parser error - ignoring payload
-//        return callback(err, 0, 1);
-//      }
-//
-//      msg = data.substr(i + 1, n);
-//
-//      if (length != msg.length) {
-//        // parser error - ignoring payload
-//        return callback(err, 0, 1);
-//      }
-//
-//      if (msg.length) {
-//        packet = exports.decodePacket(msg, binaryType, true);
-//
-//        if (err.type == packet.type && err.data == packet.data) {
-//          // parser error in individual packet - ignoring payload
-//          return callback(err, 0, 1);
-//        }
-//
-//        var ret = callback(packet, i + n, l);
-//        if (false == ret) return;
-//      }
-//
-//      // advance cursor
-//      i += n;
-//      length = "";
-//    }
-//  }
-//
-//  if (length != "") {
-//    // parser error - ignoring payload
-//    return callback(err, 0, 1);
-//  }
+    if (d.getType() == Value::Type::BINARY) {
+        return decodePayloadAsBinary(d, true);
+    }
+
+    EngineIOPacket packet;
+    const std::string& data = d.asString();
+    if (data.empty()) {
+        // parser error - ignoring payload
+        return packet;
+    }
+
+    std::string length = "";
+    size_t n;
+    std::string msg;
+
+    for (size_t i = 0, l = data.size(); i < l; i++) {
+        char chr = data[i];
+
+        if (':' != chr) {
+            length += chr;
+        } else {
+            if ("" == length || (length != (n = atoi(length.c_str())))) {
+                // parser error - ignoring payload
+//                return callback(err, 0, 1);
+                return packet;
+            }
+
+      msg = data.substr(i + 1, n);
+
+      if (length != msg.length) {
+        // parser error - ignoring payload
+        return callback(err, 0, 1);
+      }
+
+      if (msg.length) {
+        packet = exports.decodePacket(msg, binaryType, true);
+
+        if (err.type == packet.type && err.data == packet.data) {
+          // parser error in individual packet - ignoring payload
+          return callback(err, 0, 1);
+        }
+
+        var ret = callback(packet, i + n, l);
+        if (false == ret) return;
+      }
+
+      // advance cursor
+      i += n;
+      length = "";
+    }
+  }
+
+  if (length != "") {
+    // parser error - ignoring payload
+    return callback(err, 0, 1);
+  }
     return EngineIOPacket::NONE;
 }
 

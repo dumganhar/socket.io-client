@@ -21,12 +21,12 @@ void clearTimeout(TimerHandle)
 
 std::string utf8Encode(const std::string& str)
 {
-    return "";
+    return str;
 }
 
 std::string utf8Decode(const std::string& str)
 {
-    return "";
+    return str;
 }
 
 std::string base64Encode(const Buffer& buf)
@@ -48,3 +48,29 @@ std::string queryToString(const ValueObject& obj)
 {
     return "";
 }
+
+///
+
+static std::shared_ptr<IHttpRequestFactory> __httpFactory;
+static std::shared_ptr<IWebSocketFactory> __wsFactory;
+
+void setHttpRequestFactory(std::shared_ptr<IHttpRequestFactory> factory)
+{
+    __httpFactory = factory;
+}
+
+std::shared_ptr<IHttpRequestFactory> getHttpRequestFactor()
+{
+    return __httpFactory;
+}
+
+void setWebSocketFactory(std::shared_ptr<IWebSocketFactory> factory)
+{
+    __wsFactory = factory;
+}
+
+std::shared_ptr<IWebSocketFactory> getWebSocketFactory()
+{
+    return __wsFactory;
+}
+
