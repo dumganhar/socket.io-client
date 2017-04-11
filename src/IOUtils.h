@@ -34,6 +34,11 @@ std::string queryToString(const ValueObject& obj);
 class IHttpRequest
 {
 public:
+    enum class ReadyState
+    {
+        
+    }
+
     virtual ~IHttpRequest() {}
 
     virtual bool open(const std::string& method, const std::string& uri, const std::string& caFilePath) = 0;

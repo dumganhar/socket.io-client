@@ -1,4 +1,5 @@
 #include "EngineIORequest.h"
+#include "IOUtils.h"
 
 /**
  * Request constructor
@@ -60,12 +61,14 @@ void EngineIORequest::create()
 //  opts.ciphers = this.ciphers;
 //  opts.rejectUnauthorized = this.rejectUnauthorized;
 //
-//  var xhr = this.xhr = new XMLHttpRequest(opts);
+    _xhr = getHttpRequestFactory()->create();// new XMLHttpRequest(opts);
 //  var self = this;
 //
 //  try {
-//    debug("xhr open %s: %s", this.method, this.uri);
-//    xhr.open(this.method, this.uri, this.async);
+    debug("xhr open %s: %s", _method, _uri, "");
+    xhr->open(_method, _uri);
+
+
 //    try {
 //      if (this.extraHeaders) {
 //        xhr.setDisableHeaderCheck(true);
@@ -82,62 +85,40 @@ void EngineIORequest::create()
 //      xhr.responseType = "arraybuffer";
 //    }
 //
-//    if ("POST" == this.method) {
-//      try {
-//        if (this.isBinary) {
-//          xhr.setRequestHeader("Content-type', 'application/octet-stream");
-//        } else {
-//          xhr.setRequestHeader("Content-type', 'text/plain;charset=UTF-8");
-//        }
-//      } catch (e) {}
-//    }
+   if ("POST" == _method) {
+       if (_isBinary) {
+         _xhr->setRequestHeader("Content-type', 'application/octet-stream");
+       } else {
+         _xhr->setRequestHeader("Content-type', 'text/plain;charset=UTF-8");
+       }
+   }
 //
-//    try {
-//      xhr.setRequestHeader("Accept', '*/*");
-//    } catch (e) {}
+      _xhr->setRequestHeader("Accept', '*/*");
 //
 //    // ie6 check
 //    if ("withCredentials" in xhr) {
 //      xhr.withCredentials = true;
 //    }
 //
-//    if (this.requestTimeout) {
-//      xhr.timeout = this.requestTimeout;
-//    }
-//
-//    if (this.hasXDR()) {
-//      xhr.onload = function () {
-//        self.onLoad();
-//      };
-//      xhr.onerror = function () {
-//        self.onError(xhr.responseText);
-//      };
-//    } else {
-//      xhr.onreadystatechange = function () {
-//        if (4 != xhr.readyState) return;
-//        if (200 == xhr.status || 1223 == xhr.status) {
-//          self.onLoad();
-//        } else {
-//          // make sure the `error` event handler that's user-set
-//          // does not throw in the same tick and gets caught here
-//          setTimeout(function () {
-//            self.onError(xhr.status);
-//          }, 0);
-//        }
-//      };
-//    }
-//
-//    debug("xhr data %s", this.data);
-//    xhr.send(this.data);
-//  } catch (e) {
-//    // Need to defer since .create() is called directly fhrom the constructor
-//    // and thus the "error" event can only be only bound *after* this exception
-//    // occurs.  Therefore, also, we cannot throw here at all.
-//    setTimeout(function () {
-//      self.onError(e);
-//    }, 0);
-//    return;
-//  }
+    if (_requestTimeout > 0) {
+      _xhr->timeout = _requestTimeout;
+    }
+
+    _xhr->onreadystatechange = []() {
+       if (4 != xhr.readyState) return;
+       if (200 == xhr.status || 1223 == xhr.status) {
+         self.onLoad();
+       } else {
+         // make sure the `error` event handler that's user-set
+         // does not throw in the same tick and gets caught here
+         setTimeout(function () {
+           self.onError(xhr.status);
+         }, 0);
+       }
+     };
+
+   debug("xhr data %s", this.data);
+   xhr.send(this.data);
 //
 //  if (global.document) {
 //    this.index = Request.requestsCount++;

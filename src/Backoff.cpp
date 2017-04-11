@@ -7,7 +7,7 @@ Backoff::Backoff(long min, long max, float jitter, int factor)
     _factor = factor;
     _jitter = jitter;
     _factor = factor;
-  _attempts = 0;
+    _attempts = 0;
 }
 
 Backoff::~Backoff()
