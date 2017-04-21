@@ -9,9 +9,14 @@
 /* Begin PBXBuildFile section */
 		1A13ED9F1E9CDD6A00680722 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 1A13ED9E1E9CDD6A00680722 /* AppDelegate.m */; };
 		1A13EDA21E9CDD6A00680722 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 1A13EDA11E9CDD6A00680722 /* main.m */; };
-		1A13EDA51E9CDD6A00680722 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1A13EDA41E9CDD6A00680722 /* ViewController.m */; };
+		1A13EDA51E9CDD6A00680722 /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1A13EDA41E9CDD6A00680722 /* ViewController.mm */; };
 		1A13EDA71E9CDD6A00680722 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A13EDA61E9CDD6A00680722 /* Assets.xcassets */; };
 		1A13EDAA1E9CDD6A00680722 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1A13EDA81E9CDD6A00680722 /* Main.storyboard */; };
+		1A13EDD41E9CDD9A00680722 /* Emitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A13EDB41E9CDD9A00680722 /* Emitter.cpp */; };
+		1A13EDE81E9CDDCB00680722 /* IOTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A13EDE41E9CDDCB00680722 /* IOTypes.cpp */; };
+		1A13EDE91E9CDDCB00680722 /* IOUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A13EDE61E9CDDCB00680722 /* IOUtils.cpp */; };
+		1A13EE051E9CE01900680722 /* Backoff.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A13EDEA1E9CE01900680722 /* Backoff.cpp */; };
+		1A13EE071E9CE01900680722 /* EngineIOParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A13EDED1E9CE01900680722 /* EngineIOParser.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,10 +25,20 @@
 		1A13ED9E1E9CDD6A00680722 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		1A13EDA11E9CDD6A00680722 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		1A13EDA31E9CDD6A00680722 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
-		1A13EDA41E9CDD6A00680722 /* ViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
+		1A13EDA41E9CDD6A00680722 /* ViewController.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = ViewController.mm; sourceTree = "<group>"; };
 		1A13EDA61E9CDD6A00680722 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1A13EDA91E9CDD6A00680722 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		1A13EDAB1E9CDD6A00680722 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1A13EDB41E9CDD9A00680722 /* Emitter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Emitter.cpp; sourceTree = "<group>"; };
+		1A13EDB51E9CDD9A00680722 /* Emitter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Emitter.h; sourceTree = "<group>"; };
+		1A13EDE41E9CDDCB00680722 /* IOTypes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IOTypes.cpp; sourceTree = "<group>"; };
+		1A13EDE51E9CDDCB00680722 /* IOTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IOTypes.h; sourceTree = "<group>"; };
+		1A13EDE61E9CDDCB00680722 /* IOUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IOUtils.cpp; sourceTree = "<group>"; };
+		1A13EDE71E9CDDCB00680722 /* IOUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IOUtils.h; sourceTree = "<group>"; };
+		1A13EDEA1E9CE01900680722 /* Backoff.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Backoff.cpp; sourceTree = "<group>"; };
+		1A13EDED1E9CE01900680722 /* EngineIOParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EngineIOParser.cpp; sourceTree = "<group>"; };
+		1A13EDF91E9CE01900680722 /* EngineIOParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EngineIOParser.h; sourceTree = "<group>"; };
+		1A13EE011E9CE01900680722 /* Backoff.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Backoff.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -40,6 +55,7 @@
 		1A13ED911E9CDD6A00680722 = {
 			isa = PBXGroup;
 			children = (
+				1A13EDB11E9CDD9A00680722 /* src */,
 				1A13ED9C1E9CDD6A00680722 /* SocketIOTest */,
 				1A13ED9B1E9CDD6A00680722 /* Products */,
 			);
@@ -59,7 +75,7 @@
 				1A13ED9D1E9CDD6A00680722 /* AppDelegate.h */,
 				1A13ED9E1E9CDD6A00680722 /* AppDelegate.m */,
 				1A13EDA31E9CDD6A00680722 /* ViewController.h */,
-				1A13EDA41E9CDD6A00680722 /* ViewController.m */,
+				1A13EDA41E9CDD6A00680722 /* ViewController.mm */,
 				1A13EDA61E9CDD6A00680722 /* Assets.xcassets */,
 				1A13EDA81E9CDD6A00680722 /* Main.storyboard */,
 				1A13EDAB1E9CDD6A00680722 /* Info.plist */,
@@ -74,6 +90,24 @@
 				1A13EDA11E9CDD6A00680722 /* main.m */,
 			);
 			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		1A13EDB11E9CDD9A00680722 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				1A13EDEA1E9CE01900680722 /* Backoff.cpp */,
+				1A13EE011E9CE01900680722 /* Backoff.h */,
+				1A13EDB41E9CDD9A00680722 /* Emitter.cpp */,
+				1A13EDB51E9CDD9A00680722 /* Emitter.h */,
+				1A13EDED1E9CE01900680722 /* EngineIOParser.cpp */,
+				1A13EDF91E9CE01900680722 /* EngineIOParser.h */,
+				1A13EDE41E9CDDCB00680722 /* IOTypes.cpp */,
+				1A13EDE51E9CDDCB00680722 /* IOTypes.h */,
+				1A13EDE61E9CDDCB00680722 /* IOUtils.cpp */,
+				1A13EDE71E9CDDCB00680722 /* IOUtils.h */,
+			);
+			name = src;
+			path = ../src;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -146,9 +180,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1A13EDA51E9CDD6A00680722 /* ViewController.m in Sources */,
+				1A13EDA51E9CDD6A00680722 /* ViewController.mm in Sources */,
+				1A13EE051E9CE01900680722 /* Backoff.cpp in Sources */,
 				1A13EDA21E9CDD6A00680722 /* main.m in Sources */,
+				1A13EE071E9CE01900680722 /* EngineIOParser.cpp in Sources */,
 				1A13ED9F1E9CDD6A00680722 /* AppDelegate.m in Sources */,
+				1A13EDE91E9CDDCB00680722 /* IOUtils.cpp in Sources */,
+				1A13EDE81E9CDDCB00680722 /* IOTypes.cpp in Sources */,
+				1A13EDD41E9CDD9A00680722 /* Emitter.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

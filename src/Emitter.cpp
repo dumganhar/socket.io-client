@@ -91,7 +91,7 @@ void Emitter::emit(const Value& args)
     if (args.getType() == Value::Type::ARRAY)
     {
         const ValueArray& arguments = args.asArray();
-        if (!arguments.empty())
+        if (arguments.empty())
             return;
 
         std::string eventName = arguments[0].asString();

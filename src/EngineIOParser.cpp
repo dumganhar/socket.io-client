@@ -133,7 +133,7 @@ EngineIOPacket decodePacket(const Value& data, bool utf8decode)
           return decodeBase64Packet(str.substr(1));
         }
 
-        uint8_t type = str[0];
+        uint8_t type = str[0] - '0';
 
         std::string decodedStr;
         if (utf8decode) {
@@ -347,40 +347,44 @@ EngineIOPacket decodePayload(const Value& d)
         if (':' != chr) {
             length += chr;
         } else {
-            if ("" == length || (length != (n = atoi(length.c_str())))) {
+            if (length.empty()) {
                 // parser error - ignoring payload
 //                return callback(err, 0, 1);
                 return packet;
             }
 
-      msg = data.substr(i + 1, n);
+            n = atoi(length.c_str());
+            msg = data.substr(i + 1, n);
 
-      if (length != msg.length) {
-        // parser error - ignoring payload
-        return callback(err, 0, 1);
-      }
+            if (atoi(length.c_str()) != msg.length()) {
+                // parser error - ignoring payload
+                //cjh        return callback(err, 0, 1);
+              return packet;
+            }
 
-      if (msg.length) {
-        packet = exports.decodePacket(msg, binaryType, true);
+            if (!msg.empty()) {
+                packet = decodePacket(msg, true);
 
-        if (err.type == packet.type && err.data == packet.data) {
-          // parser error in individual packet - ignoring payload
-          return callback(err, 0, 1);
+    //        if (err.type == packet.type && err.data == packet.data) {
+    //          // parser error in individual packet - ignoring payload
+    //          return callback(err, 0, 1);
+    //        }
+    //
+    //        var ret = callback(packet, i + n, l);
+
+                return packet;
+    //        if (false == ret) return;
+            }
+
+            // advance cursor
+            i += n;
+            length = "";
         }
-
-        var ret = callback(packet, i + n, l);
-        if (false == ret) return;
-      }
-
-      // advance cursor
-      i += n;
-      length = "";
-    }
   }
 
   if (length != "") {
     // parser error - ignoring payload
-    return callback(err, 0, 1);
+//    return callback(err, 0, 1);
   }
     return EngineIOPacket::NONE;
 }

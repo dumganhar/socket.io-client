@@ -37,7 +37,7 @@ public:
     enum class ReadyState
     {
         
-    }
+    };
 
     virtual ~IHttpRequest() {}
 
